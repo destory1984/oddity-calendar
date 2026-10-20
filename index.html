@@ -40,7 +40,7 @@ h4{margin:22px 0 8px;font-size:15px}
 .box{width:18px;height:18px;border-radius:3px;border:2px solid;display:grid;place-items:center;font-size:12px;color:#1f1f1f}
 main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;display:flex;flex-direction:column;overflow:hidden}
 .dow{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11px;color:var(--muted);padding-top:8px}
-.weeks{flex:1;display:grid}
+.weeks{flex:1;display:grid;min-height:0}
 .week{position:relative;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:22px;row-gap:3px;align-content:start;min-height:0;overflow:hidden}
 .week .bgcell{grid-row:1/span 10;margin-bottom:-400px;border-left:1px solid var(--line)}
 .week .bgcell:first-child{border-left:0}
@@ -189,7 +189,7 @@ const calOf = id => CALS.find(c=>c.id===id) || CALS[0];
 const isBar = e => e.allDay || e.start !== e.end;
 
 // ---------- month view ----------
-const MAX_LANES = 4;
+const LANE_PX = 25;   // 22px row + 3px gap (see .week)
 function render(){
   document.getElementById('logoDay').textContent = today.getDate();
   document.getElementById('view').value = view;
@@ -207,6 +207,8 @@ function render(){
   box.style.gridTemplateRows = `repeat(${weeksN},minmax(0,1fr))`;
   box.innerHTML = '';
   const evs = allEvents();
+  // as many event lanes as fit under the day number, keeping one line for "N개 더보기"
+  const MAX_LANES = Math.max(1, Math.floor(box.clientHeight / weeksN / LANE_PX) - 2);
 
   for (let w=0; w<weeksN; w++){
     const ws = addDays(first, w*7), we = addDays(ws, 6);
@@ -581,6 +583,7 @@ document.getElementById('next').onclick = () => go(1);
 document.getElementById('todayBtn').onclick = () => { cur = new Date(today); mini = new Date(today.getFullYear(), today.getMonth(), 1); render(); };
 document.getElementById('mPrev').onclick = () => { mini = new Date(mini.getFullYear(), mini.getMonth()-1, 1); renderSide(); };
 document.getElementById('mNext').onclick = () => { mini = new Date(mini.getFullYear(), mini.getMonth()+1, 1); renderSide(); };
+let resizeT; addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(render, 150); });
 document.getElementById('gBtn').onclick = gConnect;
 gResume();
 document.getElementById('createBtn').onclick = () => openEditor({start:ymd(today), end:ymd(today)});
