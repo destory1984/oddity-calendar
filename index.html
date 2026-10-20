@@ -578,10 +578,10 @@ render();
     const dx = tx - x, dy = ty - y, dist = Math.hypot(dx, dy);
     const moving = dist > 4;
     if (moving){
-      const step = Math.min(dist, 0.8 + dist * 0.015);   // leisurely; a bit faster when far behind
+      const step = Math.min(dist, 0.4 + dist * 0.007);   // leisurely; a bit faster when far behind
       x += dx / dist * step; y += dy / dist * step;
       if (Math.abs(mx - x) > 30) dir = mx > x ? 1 : -1;
-      hop += 0.14;   // fixed hop rhythm, independent of speed
+      hop += 0.09;   // fixed hop rhythm, independent of speed
     } else hop = 0;
     const lift = moving ? Math.abs(Math.sin(hop)) * 12 : 0;
     el.classList.toggle('run', moving);
