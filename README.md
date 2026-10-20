@@ -41,3 +41,9 @@ python -m http.server 8765
 - 보고 있는 달과 앞뒤 1달씩, 3달 치 일정을 불러온다.
 - 이 달력의 일정에는 끝나는 시각이 없다. 새로 만든 구글 일정은 1시간짜리가 된다. 기존 구글 일정을 고치면 원래 길이를 지킨다(하루 안에 끝나는 일정일 때).
 - 반복 일정은 하나씩 따로 보이고, 고치면 그 한 번만 바뀐다.
+
+## 사용한 글꼴과 그림
+
+- 본문: [Pretendard](https://github.com/orioncactus/pretendard) 1.3.9, SIL OFL 1.1. jsDelivr CDN 으로 불러온다.
+- 제목: [Gaegu](https://fonts.google.com/specimen/Gaegu), SIL OFL 1.1. Google Fonts 로 불러온다.
+- `img/bunny.png`: ChatGPT 이미지 생성으로 그린 토끼를 128px 로 줄인 것이다. 마우스를 따라오고, 일정 칸은 피해서 다닌다.
