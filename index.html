@@ -105,6 +105,8 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
     <button class="icon" id="next">›</button>
     <div class="title" id="title"></div>
     <div class="spacer"></div>
+    <span id="gStatus" style="color:var(--muted);font-size:12px"></span>
+    <button class="pill" id="gBtn">구글 연결</button>
     <input id="search" placeholder="일정 검색">
     <select id="view" class="pill"><option value="month">월</option><option value="week">주</option><option value="day">일</option></select>
   </header>
@@ -113,6 +115,7 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
     <div class="mini-head"><b id="miniTitle"></b><span><button class="icon" id="mPrev">‹</button><button class="icon" id="mNext">›</button></span></div>
     <div class="mini" id="mini"></div>
     <h4>내 캘린더</h4><div id="myCals"></div>
+    <h4 id="gHead" hidden>구글 캘린더</h4><div id="gCals"></div>
     <h4>다른 캘린더</h4><div id="otherCals"></div>
   </aside>
   <main>
@@ -126,6 +129,7 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
   <div class="modal" id="modal"></div>
 </div>
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 // ---------- data ----------
 const CALS = [
@@ -159,7 +163,7 @@ let view = store.get('cal.view', 'month');
 let query = '';
 
 function allEvents(){
-  const list = events.map(e=>({...e}));
+  const list = [...events, ...gEvents].map(e=>({...e}));
   for (const [d,t] of Object.entries(KR)) list.push({id:'kr'+d,cal:'krhol',title:t,start:d,end:d,allDay:true});
   for (const [d,t] of Object.entries(US)) list.push({id:'us'+d,cal:'ushol',title:t,start:d,end:d,allDay:true});
   return list.filter(e=>!hidden.has(e.cal) && (!query || e.title.toLowerCase().includes(query)));
@@ -176,6 +180,7 @@ function render(){
   document.querySelector('.dow').style.display = isMonth ? '' : 'none';
   document.getElementById('weeks').style.display = isMonth ? '' : 'none';
   document.getElementById('tview').style.display = isMonth ? 'none' : 'flex';
+  gSync().catch(gErr);
   if (!isMonth) { renderTime(); renderSide(); return; }
   const ms = new Date(cur.getFullYear(), cur.getMonth(), 1);
   document.getElementById('title').textContent = `${ms.getFullYear()}년 ${ms.getMonth()+1}월`;
@@ -352,8 +357,10 @@ function renderSide(){
     sp.onclick = () => { cur = d; render(); };
     m.appendChild(sp);
   }
-  for (const g of ['my','other']){
-    const box = document.getElementById(g==='my'?'myCals':'otherCals'); box.innerHTML='';
+  document.getElementById('gHead').hidden = !CALS.some(c=>c.group==='google');
+  for (const g of ['my','google','other']){
+    const box = document.getElementById({my:'myCals',google:'gCals',other:'otherCals'}[g]);
+    box.innerHTML='';
     for (const c of CALS.filter(c=>c.group===g)){
       const on = !hidden.has(c.id), it = document.createElement('div'); it.className='cal-item';
       it.innerHTML = `<span class="box" style="border-color:${c.color};background:${on?c.color:'transparent'}">${on?'✓':''}</span>${c.name}`;
@@ -361,6 +368,109 @@ function renderSide(){
       box.appendChild(it);
     }
   }
+}
+
+// ---------- Google Calendar ----------
+// OAuth client ID is public; put it here or paste it once in the UI (kept in localStorage).
+const GOOGLE_CLIENT_ID = '';
+const GSCOPE = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly';
+const API = 'https://www.googleapis.com/calendar/v3';
+const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+let gToken = null, gClient = null, gEvents = [], gWindow = '';
+const isG = calId => calId.startsWith('g:');
+const gPath = (calId, evId) => `/calendars/${encodeURIComponent(calId.slice(2))}/events` + (evId ? '/' + encodeURIComponent(evId) : '');
+const setStatus = s => document.getElementById('gStatus').textContent = s;
+
+function gAuth(){
+  return new Promise((res, rej) => {
+    const id = GOOGLE_CLIENT_ID || store.get('cal.gclient', '');
+    if (!window.google?.accounts) return rej(new Error('구글 로그인 스크립트를 불러오지 못했습니다'));
+    gClient ??= google.accounts.oauth2.initTokenClient({client_id:id, scope:GSCOPE, callback:()=>{}});
+    gClient.callback = r => r.error ? rej(new Error(r.error)) : (gToken = r.access_token, res());
+    gClient.error_callback = e => rej(new Error(e.type));
+    gClient.requestAccessToken({prompt:''});
+  });
+}
+async function gFetch(path, opt = {}, retry = true){
+  const r = await fetch(API + path, {...opt, headers:{Authorization:'Bearer ' + gToken, 'Content-Type':'application/json'}});
+  if (r.status === 401 && retry){ await gAuth(); return gFetch(path, opt, false); }   // token lasts 1 hour
+  if (!r.ok) throw new Error(`Google API ${r.status}`);
+  return r.status === 204 ? null : r.json();
+}
+
+async function gConnect(){
+  if (gToken) return gSync(true).catch(gErr);
+  if (!GOOGLE_CLIENT_ID && !store.get('cal.gclient', '')){
+    const id = prompt('구글 OAuth 클라이언트 ID를 붙여 넣으세요 (….apps.googleusercontent.com)');
+    if (!id) return;
+    store.set('cal.gclient', id.trim());
+  }
+  try {
+    setStatus('구글 연결 중…');
+    await gAuth();
+    const list = await gFetch('/users/me/calendarList');
+    const gc = list.items.map(c => ({id:'g:'+c.id, name:c.summaryOverride || c.summary, color:c.backgroundColor, group:'google',
+      readonly: !['owner','writer'].includes(c.accessRole)}));
+    CALS.splice(0, CALS.length, ...CALS.filter(c => c.group !== 'google'), ...gc);
+    document.getElementById('gBtn').textContent = '↻ 동기화';
+    await gSync(true);
+  } catch (err) { gErr(err); }
+}
+const gErr = err => setStatus('구글 오류: ' + err.message);
+
+// fetch the shown month ±1 month from every Google calendar
+async function gSync(force){
+  if (!gToken) return;
+  const key = `${cur.getFullYear()}-${cur.getMonth()}`;
+  if (!force && key === gWindow) return;
+  gWindow = key;
+  const from = new Date(cur.getFullYear(), cur.getMonth()-1, 1), to = new Date(cur.getFullYear(), cur.getMonth()+2, 1);
+  const q = `?singleEvents=true&maxResults=2500&timeMin=${encodeURIComponent(from.toISOString())}&timeMax=${encodeURIComponent(to.toISOString())}`;
+  setStatus('불러오는 중…');
+  const lists = await Promise.all(CALS.filter(c => c.group === 'google').map(c =>
+    gFetch(gPath(c.id) + q).then(r => (r.items || []).filter(it => it.status !== 'cancelled').map(it => fromG(it, c.id)))));
+  if (key !== gWindow) return;   // user moved on while loading
+  gEvents = lists.flat();
+  setStatus(`구글 ${gEvents.length}건`);
+  render();
+}
+
+function fromG(it, cal){
+  const e = {id:'g'+it.id, gid:it.id, cal, title:it.summary || '(제목 없음)'};
+  if (it.start.date){   // all-day: Google's end date is exclusive
+    e.allDay = true; e.start = it.start.date; e.end = ymd(addDays(parse(it.end.date), -1));
+  } else {
+    const s = new Date(it.start.dateTime), en = new Date(it.end.dateTime);
+    e.start = ymd(s); e.time = `${pad(s.getHours())}:${pad(s.getMinutes())}`;
+    e.end = ymd(new Date(Math.max(+s, en - 1))); e.dur = (en - s) / 6e4;
+  }
+  return e;
+}
+function toG(r){
+  if (!r.time) return {summary:r.title, start:{date:r.start}, end:{date:ymd(addDays(parse(r.end), 1))}};
+  const [h, m] = r.time.split(':').map(Number);
+  const s = parse(r.start); s.setHours(h, m);
+  const en = parse(r.end); en.setHours(h, m + (r.start === r.end ? (r.dur || 60) : 60));
+  return {summary:r.title, start:{dateTime:s.toISOString(), timeZone:tz}, end:{dateTime:en.toISOString(), timeZone:tz}};
+}
+
+// save to wherever rec.cal lives; moving between local and Google = create there + delete here
+async function saveEvent(old, rec){
+  if (isG(rec.cal)){
+    const body = JSON.stringify(toG({...rec, dur:old.dur}));
+    const same = old.gid && old.cal === rec.cal;
+    const it = await gFetch(gPath(rec.cal, same ? old.gid : ''), {method: same ? 'PATCH' : 'POST', body});
+    if (old.id && !same) await removeEvent(old);
+    gEvents = gEvents.filter(x => x.id !== old.id).concat(fromG(it, rec.cal));
+  } else {
+    if (old.gid){ await removeEvent(old); rec.id = Date.now(); }
+    events = old.id && !old.gid ? events.map(x => x.id === old.id ? rec : x) : [...events, rec];
+    save();
+  }
+}
+async function removeEvent(e){
+  if (e.gid){ await gFetch(gPath(e.cal, e.gid), {method:'DELETE'}); gEvents = gEvents.filter(x => x.id !== e.id); }
+  else { events = events.filter(x => x.id !== e.id); save(); }
 }
 
 // ---------- modals ----------
@@ -396,17 +506,22 @@ function openEditor(e){
     <button class="btn" id="x">취소</button><button class="btn primary" id="ok">저장</button></div>`;
   const $ = id => modal.querySelector('#'+id);
   $('x').onclick = close;
-  $('ok').onclick = () => {
+  $('ok').onclick = async () => {
     const title = $('fTitle').value.trim() || '(제목 없음)';
     let start = $('fStart').value, end = $('fEnd').value || start;
     if (!start) return;
     if (end < start) end = start;
     const time = $('fTime').value;
     const rec = {id: e.id || Date.now(), cal:$('fCal').value, title, start, end, time: time||undefined, allDay: !time};
-    events = isNew ? [...events, rec] : events.map(x=>x.id===e.id?rec:x);
-    save(); close(); render();
+    $('ok').disabled = true;
+    try { await saveEvent(e, rec); } catch (err) { $('ok').disabled = false; return alert('저장 실패: ' + err.message); }
+    close(); render();
   };
-  if (!isNew) $('del').onclick = () => { if (confirm('이 일정을 삭제할까요?')) { events = events.filter(x=>x.id!==e.id); save(); close(); render(); } };
+  if (!isNew) $('del').onclick = async () => {
+    if (!confirm('이 일정을 삭제할까요?')) return;
+    try { await removeEvent(e); } catch (err) { return alert('삭제 실패: ' + err.message); }
+    close(); render();
+  };
   bg.classList.add('on'); $('fTitle').focus();
 }
 
@@ -427,6 +542,7 @@ document.getElementById('next').onclick = () => go(1);
 document.getElementById('todayBtn').onclick = () => { cur = new Date(today); mini = new Date(today.getFullYear(), today.getMonth(), 1); render(); };
 document.getElementById('mPrev').onclick = () => { mini = new Date(mini.getFullYear(), mini.getMonth()-1, 1); renderSide(); };
 document.getElementById('mNext').onclick = () => { mini = new Date(mini.getFullYear(), mini.getMonth()+1, 1); renderSide(); };
+document.getElementById('gBtn').onclick = gConnect;
 document.getElementById('createBtn').onclick = () => openEditor({start:ymd(today), end:ymd(today)});
 document.getElementById('search').oninput = e => { query = e.target.value.trim().toLowerCase(); render(); };
 document.querySelector('main').addEventListener('wheel', e => { if (view === 'month' && Math.abs(e.deltaY) > 40 && !bg.classList.contains('on')) go(e.deltaY>0?1:-1); }, {passive:true});
