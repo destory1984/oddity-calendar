@@ -90,9 +90,9 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
 .tev b{display:block;font-weight:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .now{position:absolute;left:0;right:0;height:2px;background:#ea4335;z-index:3}
 .now::before{content:"";position:absolute;left:-6px;top:-5px;width:12px;height:12px;border-radius:50%;background:#ea4335}
-#bunny{position:fixed;left:0;top:0;width:87px;height:112px;pointer-events:none;z-index:50;will-change:transform;filter:drop-shadow(0 4px 3px #0006)}
-#bunny .run{position:absolute;inset:0;background:url(img/hop.png) 0 0/346px 112px no-repeat}
-#bunny .sleep{position:absolute;left:8px;bottom:0;width:72px;height:75px;transform-origin:50% 100%;display:none}
+#bunny{position:fixed;left:0;top:0;width:108px;height:112px;pointer-events:none;z-index:50;will-change:transform;filter:drop-shadow(0 4px 3px #0006)}
+#bunny .run{position:absolute;inset:0;background:url(img/hop.png) 0 0/430px 112px no-repeat}
+#bunny .sleep{position:absolute;left:6px;bottom:0;width:96px;height:75px;transform-origin:50% 100%;display:none}
 #bunny.zz .run{display:none}
 #bunny.zz .sleep{display:block}
 @media (prefers-reduced-motion:reduce){#bunny{display:none}}
@@ -399,7 +399,14 @@ function gAuth(){
     const id = GOOGLE_CLIENT_ID || store.get('cal.gclient', '');
     if (!window.google?.accounts) return rej(new Error('구글 로그인 스크립트를 불러오지 못했습니다'));
     gClient ??= google.accounts.oauth2.initTokenClient({client_id:id, scope:GSCOPE, callback:()=>{}});
-    gClient.callback = r => r.error ? rej(new Error(r.error)) : (gToken = r.access_token, res());
+    gClient.callback = r => {
+      if (r.error) return rej(new Error(r.error));
+      gToken = r.access_token;
+      // keep the 1-hour token across reloads (F5); it expires on its own
+      store.set('cal.gtoken', {t:gToken, exp:Date.now() + (r.expires_in - 60) * 1000});
+      store.set('cal.gon', true);
+      res();
+    };
     gClient.error_callback = e => rej(new Error(e.type));
     gClient.requestAccessToken({prompt:''});
   });
@@ -411,16 +418,19 @@ async function gFetch(path, opt = {}, retry = true){
   return r.status === 204 ? null : r.json();
 }
 
+let gConnecting = false;
 async function gConnect(){
-  if (gToken) return gSync(true).catch(gErr);
+  if (gToken && CALS.some(c => c.group === 'google')) return gSync(true).catch(gErr);
+  if (gConnecting) return;
   if (!GOOGLE_CLIENT_ID && !store.get('cal.gclient', '')){
     const id = prompt('구글 OAuth 클라이언트 ID를 붙여 넣으세요 (….apps.googleusercontent.com)');
     if (!id) return;
     store.set('cal.gclient', id.trim());
   }
+  gConnecting = true;
   try {
     setStatus('구글 연결 중…');
-    await gAuth();
+    if (!gToken) await gAuth();
     const list = await gFetch('/users/me/calendarList');
     const gc = list.items.map(c => ({id:'g:'+c.id, name:c.summaryOverride || c.summary, color:c.backgroundColor, group:'google',
       readonly: !['owner','writer'].includes(c.accessRole)}));
@@ -428,8 +438,19 @@ async function gConnect(){
     document.getElementById('gBtn').textContent = '↻ 동기화';
     await gSync(true);
   } catch (err) { gErr(err); }
+  finally { gConnecting = false; }
 }
 const gErr = err => setStatus('구글 오류: ' + err.message);
+
+// reconnect after a reload: reuse a saved token that is still valid; if it ran out,
+// fetch a new one on the first click (browsers only allow the sign-in popup from a click)
+function gResume(){
+  if (!store.get('cal.gon', false)) return;
+  const saved = store.get('cal.gtoken', null);
+  if (saved && saved.exp > Date.now()){ gToken = saved.t; gConnect(); return; }
+  setStatus('클릭하면 구글 다시 연결');
+  addEventListener('pointerdown', () => gConnect(), {once:true, capture:true});
+}
 
 // fetch the shown month ±1 month from every Google calendar
 async function gSync(force){
@@ -556,6 +577,7 @@ document.getElementById('todayBtn').onclick = () => { cur = new Date(today); min
 document.getElementById('mPrev').onclick = () => { mini = new Date(mini.getFullYear(), mini.getMonth()-1, 1); renderSide(); };
 document.getElementById('mNext').onclick = () => { mini = new Date(mini.getFullYear(), mini.getMonth()+1, 1); renderSide(); };
 document.getElementById('gBtn').onclick = gConnect;
+gResume();
 document.getElementById('createBtn').onclick = () => openEditor({start:ymd(today), end:ymd(today)});
 document.getElementById('search').oninput = e => { query = e.target.value.trim().toLowerCase(); render(); };
 document.querySelector('main').addEventListener('wheel', e => { if (view === 'month' && Math.abs(e.deltaY) > 40 && !bg.classList.contains('on')) go(e.deltaY>0?1:-1); }, {passive:true});
@@ -564,7 +586,7 @@ render();
 // ---------- bunny that hops after the mouse ----------
 (() => {
   const el = document.getElementById('bunny'), run = el.querySelector('.run'), sleep = el.querySelector('.sleep');
-  const W = 87, H = 112, PAD = 3, FRAMES = 4, SLEEP_AFTER = 1500;
+  const W = 108, H = 112, PAD = 3, FRAMES = 4, SLEEP_AFTER = 1500;
   let mx = innerWidth / 2, my = innerHeight / 2, x = mx, y = my, dir = 1, phase = 0, stillSince = performance.now();
   addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
   // events are obstacles: refresh their boxes a few times a second
@@ -608,7 +630,7 @@ render();
     } else {
       // 4 frames per hop (crouch, push, air, land); body sways side to side for the waddle
       const p = phase % (2 * Math.PI);
-      run.style.backgroundPositionX = -Math.floor(p / (2 * Math.PI) * FRAMES) * 86.5 + "px";
+      run.style.backgroundPositionX = -Math.floor(p / (2 * Math.PI) * FRAMES) * 107.5 + "px";
       lift = Math.sin(p / 2) * 14;
       tilt = Math.sin(phase / 2) * 6;
     }
