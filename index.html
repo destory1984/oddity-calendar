@@ -592,7 +592,7 @@ render();
 // ---------- bunny that hops after the mouse ----------
 (() => {
   const el = document.getElementById('bunny'), run = el.querySelector('.run'), sleep = el.querySelector('.sleep');
-  const W = 54, H = 56, PAD = 3, FRAMES = 4, LOVE_AFTER = 1500, SLEEP_AFTER = 5500;
+  const W = 54, H = 56, PAD = 3, FRAMES = 4, LOVE_AFTER = 1500, SLEEP_AFTER = Infinity;   // dozing is on hold; set e.g. 5500 to bring it back
   const love = el.querySelector('.love');
   let mx = innerWidth / 2, my = innerHeight / 2, x = mx, y = my, dir = 1, phase = 0, stillSince = performance.now();
   addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
