@@ -90,9 +90,9 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
 .tev b{display:block;font-weight:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .now{position:absolute;left:0;right:0;height:2px;background:#ea4335;z-index:3}
 .now::before{content:"";position:absolute;left:-6px;top:-5px;width:12px;height:12px;border-radius:50%;background:#ea4335}
-#bunny{position:fixed;left:0;top:0;width:108px;height:112px;pointer-events:none;z-index:50;will-change:transform;filter:drop-shadow(0 4px 3px #0006)}
-#bunny .run{position:absolute;inset:0;background:url(img/hop.png) 0 0/430px 112px no-repeat}
-#bunny .sleep{position:absolute;left:6px;bottom:0;width:96px;height:75px;transform-origin:50% 100%;display:none}
+#bunny{position:fixed;left:0;top:0;width:54px;height:56px;pointer-events:none;z-index:50;will-change:transform;filter:drop-shadow(0 4px 3px #0006)}
+#bunny .run{position:absolute;inset:0;background:url(img/hop.png) 0 0/215px 56px no-repeat}
+#bunny .sleep{position:absolute;left:3px;bottom:0;width:48px;height:38px;transform-origin:50% 100%;display:none}
 #bunny.zz .run{display:none}
 #bunny.zz .sleep{display:block}
 @media (prefers-reduced-motion:reduce){#bunny{display:none}}
@@ -586,7 +586,7 @@ render();
 // ---------- bunny that hops after the mouse ----------
 (() => {
   const el = document.getElementById('bunny'), run = el.querySelector('.run'), sleep = el.querySelector('.sleep');
-  const W = 108, H = 112, PAD = 3, FRAMES = 4, SLEEP_AFTER = 1500;
+  const W = 54, H = 56, PAD = 3, FRAMES = 4, SLEEP_AFTER = 1500;
   let mx = innerWidth / 2, my = innerHeight / 2, x = mx, y = my, dir = 1, phase = 0, stillSince = performance.now();
   addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
   // events are obstacles: refresh their boxes a few times a second
@@ -607,7 +607,7 @@ render();
   (function tick(now){
     now ??= performance.now();
     // aim a little behind and below the cursor so it never covers what you click
-    const tx = mx - 70 * dir, ty = my + 10;
+    const tx = mx - 40 * dir, ty = my + 6;
     const dx = tx - x, dy = ty - y, dist = Math.hypot(dx, dy);
     const ox = x, oy = y;
     if (dist > 4){
@@ -630,8 +630,8 @@ render();
     } else {
       // 4 frames per hop (crouch, push, air, land); body sways side to side for the waddle
       const p = phase % (2 * Math.PI);
-      run.style.backgroundPositionX = -Math.floor(p / (2 * Math.PI) * FRAMES) * 107.5 + "px";
-      lift = Math.sin(p / 2) * 14;
+      run.style.backgroundPositionX = -Math.floor(p / (2 * Math.PI) * FRAMES) * 53.75 + "px";
+      lift = Math.sin(p / 2) * 8;
       tilt = Math.sin(phase / 2) * 6;
     }
     el.style.transform = `translate(${x - W/2}px, ${y - H - lift}px) scaleX(${dir}) rotate(${tilt}deg)`;
