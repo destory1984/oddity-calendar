@@ -90,8 +90,11 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
 .tev b{display:block;font-weight:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .now{position:absolute;left:0;right:0;height:2px;background:#ea4335;z-index:3}
 .now::before{content:"";position:absolute;left:-6px;top:-5px;width:12px;height:12px;border-radius:50%;background:#ea4335}
-#bunny{position:fixed;left:0;top:0;width:48px;height:56px;pointer-events:none;z-index:50;will-change:transform}
-#bunny img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 3px 2px #0006)}
+#bunny{position:fixed;left:0;top:0;width:87px;height:112px;pointer-events:none;z-index:50;will-change:transform;filter:drop-shadow(0 4px 3px #0006)}
+#bunny .run{position:absolute;inset:0;background:url(img/hop.png) 0 0/346px 112px no-repeat}
+#bunny .sleep{position:absolute;left:8px;bottom:0;width:72px;height:75px;transform-origin:50% 100%;display:none}
+#bunny.zz .run{display:none}
+#bunny.zz .sleep{display:block}
 @media (prefers-reduced-motion:reduce){#bunny{display:none}}
 @media (max-width:760px){
   .app{grid-template-columns:1fr}
@@ -131,7 +134,7 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
   </main>
 </div>
 
-<div id="bunny" aria-hidden="true"><img src="img/bunny.png" alt=""></div>
+<div id="bunny" aria-hidden="true"><div class="run"></div><img class="sleep" src="img/sleep.png" alt=""></div>
 
 <div class="modal-bg" id="modalBg">
   <div class="modal" id="modal"></div>
@@ -560,9 +563,9 @@ render();
 
 // ---------- bunny that hops after the mouse ----------
 (() => {
-  const el = document.getElementById('bunny');
-  const W = 48, H = 56, PAD = 3;
-  let mx = innerWidth / 2, my = innerHeight / 2, x = mx, y = my, dir = 1, hop = 0;
+  const el = document.getElementById('bunny'), run = el.querySelector('.run'), sleep = el.querySelector('.sleep');
+  const W = 87, H = 112, PAD = 3, FRAMES = 4, SLEEP_AFTER = 1500;
+  let mx = innerWidth / 2, my = innerHeight / 2, x = mx, y = my, dir = 1, phase = 0, stillSince = performance.now();
   addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
   // events are obstacles: refresh their boxes a few times a second
   let walls = [];
@@ -579,20 +582,37 @@ render();
       if (k < 2) x += out[k]; else y += out[k];
     }
   };
-  (function tick(){
+  (function tick(now){
+    now ??= performance.now();
     // aim a little behind and below the cursor so it never covers what you click
-    const tx = mx - 50 * dir, ty = my + 6;
+    const tx = mx - 70 * dir, ty = my + 10;
     const dx = tx - x, dy = ty - y, dist = Math.hypot(dx, dy);
-    const moving = dist > 4;
-    if (moving){
+    const ox = x, oy = y;
+    if (dist > 4){
       const step = Math.min(dist, 0.2 + dist * 0.0035);   // leisurely; a bit faster when far behind
       x += dx / dist * step; y += dy / dist * step;
-      if (Math.abs(mx - x) > 30) dir = mx > x ? 1 : -1;
-      hop += 0.06;   // fixed hop rhythm, independent of speed
-    } else hop = 0;
+      if (Math.abs(mx - x) > 40) dir = mx > x ? 1 : -1;
+    }
     avoid();
-    const lift = moving ? Math.abs(Math.sin(hop)) * 12 : 0;
-    el.style.transform = `translate(${x - W/2}px, ${y - H - lift}px) scaleX(${dir})`;
+    // "moving" = it actually got somewhere, so a bunny stuck against an event can still nod off
+    const moving = Math.hypot(x - ox, y - oy) > 0.15;
+    if (moving){ stillSince = now; phase += 0.09; }
+    else if (phase % (2 * Math.PI) > 0.2) phase += 0.09;   // finish the hop in progress, then land
+    const asleep = now - stillSince > SLEEP_AFTER;
+    el.classList.toggle('zz', asleep);
+    let lift = 0, tilt = 0;
+    if (asleep){
+      // slow breathing and a little nod
+      const t = now / 1000;
+      sleep.style.transform = `scale(${1 + Math.sin(t * 2) * 0.015}, ${1 + Math.sin(t * 2) * 0.03}) rotate(${Math.sin(t * 0.7) * 2}deg)`;
+    } else {
+      // 4 frames per hop (crouch, push, air, land); body sways side to side for the waddle
+      const p = phase % (2 * Math.PI);
+      run.style.backgroundPositionX = -Math.floor(p / (2 * Math.PI) * FRAMES) * 86.5 + "px";
+      lift = Math.sin(p / 2) * 14;
+      tilt = Math.sin(phase / 2) * 6;
+    }
+    el.style.transform = `translate(${x - W/2}px, ${y - H - lift}px) scaleX(${dir}) rotate(${tilt}deg)`;
     requestAnimationFrame(tick);
   })();
 })();
