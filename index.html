@@ -101,6 +101,12 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
 #bunny.zz .run,#bunny.luv .run{display:none}
 #bunny.zz .sleep,#bunny.luv .love{display:block}
 @media (prefers-reduced-motion:reduce){#bunny{display:none}}
+#soundBtn{display:grid;place-items:center;color:var(--muted)}
+#soundBtn svg{width:22px;height:22px}
+#soundBtn.on{color:#f4a7b9}
+#soundBtn.on .wave{animation:wave 1.6s ease-in-out infinite;transform-origin:9px 12px}
+#soundBtn.on .wave2{animation-delay:.25s}
+@keyframes wave{0%,100%{opacity:1}50%{opacity:.45}}
 #songBox{position:fixed;right:16px;bottom:16px;width:240px;aspect-ratio:16/9;z-index:40;border-radius:10px;overflow:hidden;box-shadow:0 6px 20px #000a;display:none}
 #songBox.on{display:block}
 #songBox iframe{width:100%;height:100%;border:0}
@@ -123,7 +129,7 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
     <div class="title" id="title"></div>
     <div class="spacer"></div>
     <span id="gStatus" style="color:var(--muted);font-size:12px"></span>
-    <button class="icon" id="soundBtn" title="소리 켜기/끄기">🔔</button>
+    <button class="icon" id="soundBtn" title="소리 켜기/끄기"></button>
     <button class="pill" id="gBtn">구글 연결</button>
     <input id="search" placeholder="일정 검색">
     <select id="view" class="pill"><option value="month">월</option><option value="week">주</option><option value="day">일</option></select>
@@ -603,7 +609,12 @@ render();
 const musicBox = (() => {
   let ctx = null, on = store.get('cal.sound', true), lastPlay = 0;
   const btn = document.getElementById('soundBtn');
-  const show = () => { btn.textContent = on ? '🔔' : '🔕'; };
+  const SPEAKER = '<path d="M4 9.5h3.2L11.5 6v12l-4.3-3.5H4z" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>';
+  const ICON_ON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">${SPEAKER}
+    <path class="wave" d="M14.5 9.2a4 4 0 0 1 0 5.6"/><path class="wave wave2" d="M17 6.8a7.4 7.4 0 0 1 0 10.4"/></svg>`;
+  const ICON_OFF = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">${SPEAKER}
+    <path d="M15 9.5l5 5M20 9.5l-5 5"/></svg>`;
+  const show = () => { btn.innerHTML = on ? ICON_ON : ICON_OFF; btn.classList.toggle('on', on); btn.title = on ? '소리 끄기' : '소리 켜기'; };
   btn.onclick = () => { on = !on; store.set('cal.sound', on); show(); if (on) play(true); else pause(); };
   show();
   // browsers only allow sound after the first click/tap on the page
