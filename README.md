@@ -47,3 +47,4 @@ python -m http.server 8765
 - 본문: [Pretendard](https://github.com/orioncactus/pretendard) 1.3.9, SIL OFL 1.1. jsDelivr CDN 으로 불러온다.
 - 제목: [Gaegu](https://fonts.google.com/specimen/Gaegu), SIL OFL 1.1. Google Fonts 로 불러온다.
 - `img/hop.png`, `img/banner.png`, `img/sleep.png`: ChatGPT 이미지 생성으로 그린 토끼다. 뛰는 그림 4장, 빈 현수막을 든 그림 1장, 조는 그림 1장이다. 현수막 글자("결혼 26주년 축하")는 그림이 아니라 HTML 글자로 얹었다. 토끼는 마우스를 따라오고 일정 칸은 피해서 다닌다. 멈추고 1.5초 뒤에는 현수막을 들고 흔든다. 조는 모습은 지금은 꺼 두었다.
+- 현수막이 올라갈 때 울리는 오르골 소리는 음원 파일이 아니다. Web Audio 로 코드에서 만든다. 가락은 멘델스존 「결혼 행진곡」(공유 저작물) 첫머리의 셋잇단 팡파르를 본뜬 짧은 소절이다. 위쪽 🔔 단추로 켜고 끈다. 브라우저 규칙상 페이지를 한 번 클릭한 뒤부터 소리가 난다.

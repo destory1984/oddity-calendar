@@ -120,6 +120,7 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
     <div class="title" id="title"></div>
     <div class="spacer"></div>
     <span id="gStatus" style="color:var(--muted);font-size:12px"></span>
+    <button class="icon" id="soundBtn" title="소리 켜기/끄기">🔔</button>
     <button class="pill" id="gBtn">구글 연결</button>
     <input id="search" placeholder="일정 검색">
     <select id="view" class="pill"><option value="month">월</option><option value="week">주</option><option value="day">일</option></select>
@@ -591,6 +592,50 @@ document.getElementById('search').oninput = e => { query = e.target.value.trim()
 document.querySelector('main').addEventListener('wheel', e => { if (view === 'month' && Math.abs(e.deltaY) > 40 && !bg.classList.contains('on')) go(e.deltaY>0?1:-1); }, {passive:true});
 render();
 
+// ---------- music box ----------
+// A short music-box tune made with Web Audio (no audio file). It opens like the
+// trumpet triplets of Mendelssohn's Wedding March (public domain), then lands on C major.
+const musicBox = (() => {
+  let ctx = null, on = store.get('cal.sound', true), lastPlay = 0;
+  const btn = document.getElementById('soundBtn');
+  const show = () => { btn.textContent = on ? '🔔' : '🔕'; };
+  btn.onclick = () => { on = !on; store.set('cal.sound', on); show(); if (on) play(true); };
+  show();
+  // browsers only allow sound after the first click/tap on the page
+  addEventListener('pointerdown', () => { ctx ??= new AudioContext(); ctx.resume(); }, {capture:true});
+  const freq = n => 440 * 2 ** ((n - 69) / 12);   // MIDI note -> Hz
+  function note(midi, t, len){
+    // music-box tone: bright attack, fast fade, plus a quiet octave partial
+    for (const [mul, vol] of [[1, .22], [2, .07], [3, .03]]){
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = freq(midi) * mul;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(vol, t + .005);
+      g.gain.exponentialRampToValueAtTime(.0001, t + len);
+      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + len + .05);
+    }
+  }
+  // [midi note(s), beat length]; one beat = 0.42s
+  const TUNE = [
+    [67,1/3],[67,1/3],[67,1/3],[[72,76],1.5],
+    [67,1/3],[67,1/3],[67,1/3],[[72,76],1.5],
+    [67,1/3],[67,1/3],[67,1/3],[[76,79],.5],[[74,77],.5],[[72,76],.5],[[71,74],.5],
+    [[72,76,79,84],2.5],
+  ];
+  function play(force){
+    if (!on || !ctx || ctx.state !== 'running') return;
+    if (!force && performance.now() - lastPlay < 20000) return;   // not again for 20s
+    lastPlay = performance.now();
+    let t = ctx.currentTime + .05;
+    for (const [n, beats] of TUNE){
+      const len = beats * .42;
+      for (const m of [].concat(n)) note(m, t, Math.max(len, .6) + .8);
+      t += len;
+    }
+  }
+  return {play};
+})();
+
 // ---------- bunny that hops after the mouse ----------
 (() => {
   const el = document.getElementById('bunny'), run = el.querySelector('.run'), sleep = el.querySelector('.sleep');
@@ -632,6 +677,7 @@ render();
     // when it stops: first holds up a heart ("I love you"), then dozes off
     const idle = now - stillSince, asleep = idle > SLEEP_AFTER, loving = idle > LOVE_AFTER && !asleep;
     el.classList.toggle('zz', asleep);
+    if (loving && !el.classList.contains('luv')) musicBox.play();   // banner goes up
     el.classList.toggle('luv', loving);
     let lift = 0, tilt = 0;
     if (loving){
