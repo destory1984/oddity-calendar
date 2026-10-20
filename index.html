@@ -92,9 +92,15 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
 .now::before{content:"";position:absolute;left:-6px;top:-5px;width:12px;height:12px;border-radius:50%;background:#ea4335}
 #bunny{position:fixed;left:0;top:0;width:54px;height:56px;pointer-events:none;z-index:50;will-change:transform;filter:drop-shadow(0 4px 3px #0006)}
 #bunny .run{position:absolute;inset:0;background:url(img/hop.png) 0 0/215px 56px no-repeat}
-#bunny .sleep{position:absolute;left:3px;bottom:0;width:48px;height:38px;transform-origin:50% 100%;display:none}
-#bunny.zz .run{display:none}
-#bunny.zz .sleep{display:block}
+#bunny .sleep{position:absolute;left:4px;bottom:2px;width:46px;height:29px;transform-origin:50% 100%;display:none}
+#bunny .love{position:absolute;left:10px;bottom:1px;width:37px;height:50px;transform-origin:50% 100%;display:none}
+#bunny.zz .run,#bunny.luv .run{display:none}
+#bunny.zz .sleep,#bunny.luv .love{display:block}
+#bunny .heart{position:absolute;left:24px;top:-4px;color:#e8505b;font-size:11px;opacity:0;pointer-events:none}
+#bunny.luv .heart{animation:float 1.6s ease-out infinite}
+#bunny.luv .heart:nth-of-type(2){animation-delay:.55s;left:32px}
+#bunny.luv .heart:nth-of-type(3){animation-delay:1.1s;left:18px}
+@keyframes float{0%{opacity:0;transform:translateY(8px) scale(.6)}25%{opacity:1}100%{opacity:0;transform:translateY(-22px) scale(1.1)}}
 @media (prefers-reduced-motion:reduce){#bunny{display:none}}
 @media (max-width:760px){
   .app{grid-template-columns:1fr}
@@ -134,7 +140,7 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
   </main>
 </div>
 
-<div id="bunny" aria-hidden="true"><div class="run"></div><img class="sleep" src="img/sleep.png" alt=""></div>
+<div id="bunny" aria-hidden="true"><div class="run"></div><img class="sleep" src="img/sleep.png" alt=""><img class="love" src="img/love.png" alt=""><span class="heart">♥</span><span class="heart">♥</span><span class="heart">♥</span></div>
 
 <div class="modal-bg" id="modalBg">
   <div class="modal" id="modal"></div>
@@ -586,7 +592,8 @@ render();
 // ---------- bunny that hops after the mouse ----------
 (() => {
   const el = document.getElementById('bunny'), run = el.querySelector('.run'), sleep = el.querySelector('.sleep');
-  const W = 54, H = 56, PAD = 3, FRAMES = 4, SLEEP_AFTER = 1500;
+  const W = 54, H = 56, PAD = 3, FRAMES = 4, LOVE_AFTER = 1500, SLEEP_AFTER = 5500;
+  const love = el.querySelector('.love');
   let mx = innerWidth / 2, my = innerHeight / 2, x = mx, y = my, dir = 1, phase = 0, stillSince = performance.now();
   addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
   // events are obstacles: refresh their boxes a few times a second
@@ -611,19 +618,24 @@ render();
     const dx = tx - x, dy = ty - y, dist = Math.hypot(dx, dy);
     const ox = x, oy = y;
     if (dist > 4){
-      const step = Math.min(dist, 0.2 + dist * 0.0035);   // leisurely; a bit faster when far behind
+      const step = Math.min(dist, 0.1 + dist * 0.00175);   // leisurely; a bit faster when far behind
       x += dx / dist * step; y += dy / dist * step;
       if (Math.abs(mx - x) > 40) dir = mx > x ? 1 : -1;
     }
     avoid();
     // "moving" = it actually got somewhere, so a bunny stuck against an event can still nod off
     const moving = Math.hypot(x - ox, y - oy) > 0.15;
-    if (moving){ stillSince = now; phase += 0.09; }
-    else if (phase % (2 * Math.PI) > 0.2) phase += 0.09;   // finish the hop in progress, then land
-    const asleep = now - stillSince > SLEEP_AFTER;
+    if (moving){ stillSince = now; phase += 0.06; }
+    else if (phase % (2 * Math.PI) > 0.2) phase += 0.06;   // finish the hop in progress, then land
+    // when it stops: first holds up a heart ("I love you"), then dozes off
+    const idle = now - stillSince, asleep = idle > SLEEP_AFTER, loving = idle > LOVE_AFTER && !asleep;
     el.classList.toggle('zz', asleep);
+    el.classList.toggle('luv', loving);
     let lift = 0, tilt = 0;
-    if (asleep){
+    if (loving){
+      // shy little sway
+      love.style.transform = `rotate(${Math.sin(now / 300) * 4}deg)`;
+    } else if (asleep){
       // slow breathing and a little nod
       const t = now / 1000;
       sleep.style.transform = `scale(${1 + Math.sin(t * 2) * 0.015}, ${1 + Math.sin(t * 2) * 0.03}) rotate(${Math.sin(t * 0.7) * 2}deg)`;
