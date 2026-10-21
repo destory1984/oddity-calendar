@@ -1075,7 +1075,7 @@ const musicBox = (() => {
   ['up','upright','right','downright','down','downleft','left','upleft'].forEach((d, k) => { NK[d + 'A'] = 24 + 2 * k; NK[d + 'B'] = 25 + 2 * k; });
   const nekoEl = el.querySelector('.neko');
   let nekoHead = 'down', catRest = 0;
-  let lastRunFrame = '';
+  let lastRunFrame = '', catCycle = 0;
   function drawNeko(now, vx, vy, going){
     if (musicBox && el.classList.contains('luv')) musicBox.pause();
     el.classList.remove('luv', 'zz', 'cry');
@@ -1091,8 +1091,8 @@ const musicBox = (() => {
         nekoHead = ['right','downright','down','downleft','left','upleft','up','upright'][((Math.round(a / 45) % 8) + 8) % 8];
       }
       f = nekoHead + runFrame;
-      // "ta-dat" once per run cycle (on frame 1, every 480ms): two quick paws 90ms apart, only while it is really moving
-      if (runFrame !== lastRunFrame && runFrame === '1' && Math.hypot(vx, vy) > 0.15){ musicBox.step(); setTimeout(musicBox.step, 90); }
+      // "ta-dat" every other run cycle (on frame 1, every 960ms): two quick paws 90ms apart, only while it is really moving
+      if (runFrame !== lastRunFrame && runFrame === '1' && Math.hypot(vx, vy) > 0.15 && (catCycle++ % 2 === 0)){ musicBox.step(); setTimeout(musicBox.step, 90); }
       lastRunFrame = runFrame;
     } else {
       const rest = now - catRest;
