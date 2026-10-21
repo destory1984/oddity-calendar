@@ -995,7 +995,7 @@ const musicBox = (() => {
     }
     if (!cryingSince && dist > 2){
       // leisurely pace, a bit faster when far behind, easing in over the last 30px
-      const step = Math.min(dist, (0.1 + dist * 0.00175) * Math.min(1, 0.35 + dist / 45));
+      const step = Math.min(dist, (0.05 + dist * 0.000875) * Math.min(1, 0.35 + dist / 45));
       {
         // re-plan when the goal moves to another cell, or twice a second (events may have moved)
         const key = ((tx / G) | 0) + ',' + ((ty / G) | 0);
@@ -1016,13 +1016,13 @@ const musicBox = (() => {
     const moving = Math.hypot(x - ox, y - oy) > 0.15;
     // still trying = not at the cursor yet: keeps hopping (in place if it has to), no banner until it gets there
     const trying = dist > 20 && !cryingSince;
-    if (moving || trying){ stillSince = now; phase += 0.06; }
+    if (moving || trying){ stillSince = now; phase += 0.04; }
     // the "spot" it has to get out of: reset once it gets away from it, or reaches the cursor
     if (!trying || Math.hypot(x - spot[0], y - spot[1]) > SAME_SPOT){ spot = [x, y]; spotSince = now; }
     if (!cryingSince && now - spotSince > CRY_AFTER){ cryingSince = now; cryAt = [mx, my]; musicBox.pause(); }
     el.classList.toggle('cry', !!cryingSince);
     if (cryingSince) stillSince = now;   // no banner while crying
-    else if (phase % (2 * Math.PI) > 0.2) phase += 0.06;   // finish the hop in progress, then land
+    else if (phase % (2 * Math.PI) > 0.2) phase += 0.04;   // finish the hop in progress, then land
     // when it stops: first holds up a heart ("I love you"), then dozes off
     const idle = now - stillSince, asleep = idle > SLEEP_AFTER, loving = idle > LOVE_AFTER && !asleep;
     el.classList.toggle('zz', asleep);
