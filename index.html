@@ -1091,8 +1091,8 @@ const musicBox = (() => {
         nekoHead = ['right','downright','down','downleft','left','upleft','up','upright'][((Math.round(a / 45) % 8) + 8) % 8];
       }
       f = nekoHead + runFrame;
-      // a paw lands on frames 1 and 2, only while it is really moving
-      if (runFrame !== lastRunFrame && (runFrame === '1' || runFrame === '2') && Math.hypot(vx, vy) > 0.15) musicBox.step();
+      // a step sound on every run frame (every 120ms), only while it is really moving
+      if (runFrame !== lastRunFrame && Math.hypot(vx, vy) > 0.15) musicBox.step();
       lastRunFrame = runFrame;
     } else {
       const rest = now - catRest;
