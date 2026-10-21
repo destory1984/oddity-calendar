@@ -1,0 +1,17 @@
+{
+  "name": "토찌 달력",
+  "short_name": "토찌 달력",
+  "description": "토끼가 뛰노는 구글 캘린더 달력",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1f1f1f",
+  "theme_color": "#1f1f1f",
+  "icons": [
+    { "src": "img/app/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "img/app/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "img/app/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

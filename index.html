@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>토찌 달력</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="img/app/favicon-32.png">
+<link rel="apple-touch-icon" href="img/app/apple-touch-icon.png">
+<meta name="theme-color" content="#1f1f1f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="토찌 달력">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Single+Day&display=swap">
 <style>
@@ -906,7 +914,10 @@ const musicBox = (() => {
   const W = 70, H = 73, PAD = 3, FRAMES = 4, LOVE_AFTER = 1500, SLEEP_AFTER = Infinity;   // dozing is on hold; set e.g. 5500 to bring it back
   const love = el.querySelector('.love');
   let mx = innerWidth / 2, my = innerHeight / 2, x = mx, y = my, dir = 1, phase = 0, stillSince = performance.now();
-  addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+  // mouse: follows the pointer; phone/tablet (no hover): follows where you tap or drag a finger
+  const aim = e => { mx = e.clientX; my = e.clientY; };
+  addEventListener('pointermove', aim, {passive:true});
+  addEventListener('pointerdown', aim, {passive:true});
   // events are obstacles: refresh their boxes a few times a second
   let walls = [];
   const scan = () => { walls = [...document.querySelectorAll('.ev,.tev,.more')]
@@ -928,7 +939,8 @@ const musicBox = (() => {
   const showBtn = () => { bBtn.classList.toggle('off', !enabled); bBtn.title = enabled ? '토끼 끄기' : '토끼 켜기'; el.style.display = enabled ? '' : 'none'; };
   bBtn.onclick = () => {
     enabled = !enabled; store.set('cal.bunny', enabled); showBtn();
-    if (!enabled){ musicBox.pause(); el.className = ''; } else { x = mx; y = my; stillSince = performance.now(); }
+    // when switched back on, it sets off from the middle of the screen
+    if (!enabled){ musicBox.pause(); el.className = ''; } else { x = innerWidth / 2; y = innerHeight / 2; stillSince = performance.now(); }
   };
   showBtn();
   (function tick(now){
@@ -974,6 +986,8 @@ const musicBox = (() => {
     requestAnimationFrame(tick);
   })();
 })();
+// installable app (home-screen icon, opens without the browser bar, works offline)
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
 </html>
