@@ -198,7 +198,7 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
     <div class="mini-head"><b id="miniTitle"></b><span><button class="icon" id="mPrev">‹</button><button class="icon" id="mNext">›</button></span></div>
     <div class="mini" id="mini"></div>
     <h4 id="gHead" hidden>구글 캘린더</h4><div id="gCals"></div>
-    <h4 id="otherHead">다른 캘린더</h4><div id="otherCals"></div>
+    <h4 id="otherHead">휴일</h4><div id="otherCals"></div>
   </aside>
   <main>
     <div class="dow"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
@@ -249,9 +249,9 @@ let query = '';
 
 function allEvents(){
   const list = gEvents.map(e=>({...e}));
-  // built-in holidays only until Google is connected (Google has its own holiday calendars)
-  if (!gToken) for (const [d,t] of Object.entries(KR)) list.push({id:'kr'+d,cal:'krhol',title:t,start:d,end:d,allDay:true});
-  if (!gToken) for (const [d,t] of Object.entries(US)) list.push({id:'us'+d,cal:'ushol',title:t,start:d,end:d,allDay:true});
+  // built-in holidays: always available, each turned on/off from the sidebar like any calendar
+  for (const [d,t] of Object.entries(KR)) list.push({id:'kr'+d,cal:'krhol',title:t,start:d,end:d,allDay:true});
+  for (const [d,t] of Object.entries(US)) list.push({id:'us'+d,cal:'ushol',title:t,start:d,end:d,allDay:true});
   return list.filter(e=>!hidden.has(e.cal) && (!query || e.title.toLowerCase().includes(query)));
 }
 const calOf = id => CALS.find(c=>c.id===id) || CALS[0];
@@ -447,7 +447,6 @@ function renderSide(){
     m.appendChild(sp);
   }
   document.getElementById('gHead').hidden = !CALS.some(c=>c.group==='google');
-  document.getElementById('otherHead').hidden = document.getElementById('otherCals').hidden = !!gToken;
   for (const g of ['google','other']){
     const box = document.getElementById({google:'gCals',other:'otherCals'}[g]);
     box.innerHTML='';
