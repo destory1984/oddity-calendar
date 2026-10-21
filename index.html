@@ -142,6 +142,7 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
     <span id="gStatus" style="color:var(--muted);font-size:12px"></span>
     <button class="icon" id="soundBtn" title="소리 켜기/끄기"></button>
     <button class="pill" id="gBtn">구글 연결</button>
+    <button class="pill" id="gOff" hidden>연결 끊기</button>
     <input id="search" placeholder="일정 검색">
     <select id="view" class="pill"><option value="month">월</option><option value="week">주</option><option value="day">일</option></select>
   </header>
@@ -466,6 +467,7 @@ async function gConnect(){
       readonly: !['owner','writer'].includes(c.accessRole)}));
     CALS.splice(0, CALS.length, ...CALS.filter(c => c.group !== 'google'), ...gc);
     document.getElementById('gBtn').textContent = '↻ 동기화';
+    document.getElementById('gOff').hidden = false;
     await gSync(true);
   } catch (err) { gErr(err); }
   finally { gConnecting = false; }
@@ -474,12 +476,29 @@ const gErr = err => setStatus('구글 오류: ' + err.message);
 
 // reconnect after a reload: reuse a saved token that is still valid; if it ran out,
 // fetch a new one on the first click (browsers only allow the sign-in popup from a click)
+const gResumeClick = e => { if (e.target.id !== 'gOff') gConnect(); };
+
+// forget the Google link: revoke the token at Google, drop it here, go back to local-only
+function gDisconnect(){
+  if (!confirm('구글 캘린더 연결을 끊을까요? (구글에 있는 일정은 그대로 남습니다)')) return;
+  if (gToken && window.google?.accounts) google.accounts.oauth2.revoke(gToken, () => {});
+  gToken = null; gEvents = []; gWindow = '';
+  store.set('cal.gtoken', null); store.set('cal.gon', false);
+  removeEventListener('pointerdown', gResumeClick, {capture:true});
+  CALS.splice(0, CALS.length, ...CALS.filter(c => c.group !== 'google'));
+  document.getElementById('gBtn').textContent = '구글 연결';
+  document.getElementById('gOff').hidden = true;
+  setStatus('');
+  render();
+}
+
 function gResume(){
   if (!store.get('cal.gon', false)) return;
+  document.getElementById('gOff').hidden = false;
   const saved = store.get('cal.gtoken', null);
   if (saved && saved.exp > Date.now()){ gToken = saved.t; gConnect(); return; }
   setStatus('클릭하면 구글 다시 연결');
-  addEventListener('pointerdown', () => gConnect(), {once:true, capture:true});
+  addEventListener('pointerdown', gResumeClick, {once:true, capture:true});
 }
 
 // fetch the shown month ±1 month from every Google calendar
@@ -608,6 +627,7 @@ document.getElementById('mPrev').onclick = () => { mini = new Date(mini.getFullY
 document.getElementById('mNext').onclick = () => { mini = new Date(mini.getFullYear(), mini.getMonth()+1, 1); renderSide(); };
 let resizeT; addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(render, 150); });
 document.getElementById('gBtn').onclick = gConnect;
+document.getElementById('gOff').onclick = gDisconnect;
 gResume();
 document.getElementById('createBtn').onclick = () => openEditor({start:ymd(today), end:ymd(today)});
 document.getElementById('search').oninput = e => { query = e.target.value.trim().toLowerCase(); render(); };
