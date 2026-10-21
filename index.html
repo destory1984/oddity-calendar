@@ -201,7 +201,6 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
     <div class="mini-head"><b id="miniTitle"></b><span><button class="icon" id="mPrev">‹</button><button class="icon" id="mNext">›</button></span></div>
     <div class="mini" id="mini"></div>
     <h4 id="gHead" hidden>구글 캘린더</h4><div id="gCals"></div>
-    <h4 id="otherHead">휴일</h4><div id="otherCals"></div>
     <h4>보기</h4><div id="viewOpts"></div>
   </aside>
   <main>
@@ -224,12 +223,8 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 // ---------- data ----------
-const CALS = [
-  {id:'krhol', name:'대한민국의 휴일', color:'#c0392b', group:'other', readonly:true},
-  {id:'ushol', name:'미국의 휴일',     color:'#4285f4', group:'other', readonly:true},
-];
-const KR = {'2026-01-01':'신정','2026-02-16':'설날 연휴','2026-02-17':'설날','2026-02-18':'설날 연휴','2026-03-01':'삼일절','2026-03-02':'대체 공휴일','2026-05-05':'어린이날','2026-05-24':'부처님오신날','2026-05-25':'대체 공휴일','2026-06-03':'지방선거일','2026-06-06':'현충일','2026-08-15':'광복절','2026-08-17':'대체 공휴일','2026-09-24':'추석 연휴','2026-09-25':'추석','2026-09-26':'추석 연휴','2026-10-03':'개천절','2026-10-05':'대체 공휴일','2026-10-09':'한글날','2026-12-25':'크리스마스'};
-const US = {'2026-01-01':'새해 첫날','2026-01-19':'마틴 루서 킹 주니어의 날','2026-02-16':'대통령의 날','2026-05-25':'현충일(메모리얼 데이)','2026-06-19':'준틴스 독립기념일','2026-07-03':'독립기념일(대체 휴일)','2026-07-04':'독립기념일','2026-09-07':'노동절','2026-10-12':'콜럼버스의 날','2026-10-31':'핼러윈','2026-11-11':'재향군인의 날','2026-11-26':'추수감사절','2026-12-25':'크리스마스'};
+// calendars come from Google only (filled in on connect)
+const CALS = [];
 
 const store = {
   get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},
@@ -253,9 +248,6 @@ let query = '';
 
 function allEvents(){
   const list = gEvents.map(e=>({...e}));
-  // built-in holidays: always available, each turned on/off from the sidebar like any calendar
-  for (const [d,t] of Object.entries(KR)) list.push({id:'kr'+d,cal:'krhol',title:t,start:d,end:d,allDay:true});
-  for (const [d,t] of Object.entries(US)) list.push({id:'us'+d,cal:'ushol',title:t,start:d,end:d,allDay:true});
   return list.filter(e=>!hidden.has(e.cal) && (!query || e.title.toLowerCase().includes(query)));
 }
 // readable text on a coloured chip: dark text on light colours (e.g. Google's pale teal), white on dark ones
@@ -472,8 +464,8 @@ function renderSide(){
     m.appendChild(sp);
   }
   document.getElementById('gHead').hidden = !CALS.some(c=>c.group==='google');
-  for (const g of ['google','other']){
-    const box = document.getElementById({google:'gCals',other:'otherCals'}[g]);
+  for (const g of ['google']){
+    const box = document.getElementById('gCals');
     box.innerHTML='';
     for (const c of CALS.filter(c=>c.group===g)){
       const on = !hidden.has(c.id), it = document.createElement('div'); it.className='cal-item';
