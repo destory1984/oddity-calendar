@@ -923,16 +923,48 @@ const musicBox = (() => {
   const scan = () => { walls = [...document.querySelectorAll('.ev,.tev,.more')]
     .map(el => el.getBoundingClientRect()).filter(r => r.width && r.height); };
   setInterval(scan, 300); scan();
-  // push the bunny's box (x = centre, y = feet) out of any event it overlaps, along the shortest way
-  const avoid = () => {
-    for (const r of walls){
-      const l = x - W/2, rt = x + W/2, t = y - H, b = y;
-      if (rt < r.left - PAD || l > r.right + PAD || b < r.top - PAD || t > r.bottom + PAD) continue;
-      const out = [r.left - PAD - rt, r.right + PAD - l, r.top - PAD - b, r.bottom + PAD - t];
-      const k = out.reduce((best, v, i) => Math.abs(v) < Math.abs(out[best]) ? i : best, 0);
-      if (k < 2) x += out[k]; else y += out[k];
-    }
+  // does the bunny's box (px = centre, py = feet) touch an event?
+  const blocked = (px, py) => walls.some(r =>
+    px + W/2 > r.left - PAD && px - W/2 < r.right + PAD && py > r.top - PAD && py - H < r.bottom + PAD);
+  // nearest free spot around (tx, ty): rings of growing radius, 16 directions each
+  const freeSpot = (tx, ty) => {
+    if (!blocked(tx, ty)) return [tx, ty];
+    for (let rad = 16; rad <= 240; rad += 16)
+      for (let k = 0; k < 16; k++){
+        const a = k / 16 * 2 * Math.PI, px = tx + Math.cos(a) * rad, py = ty + Math.sin(a) * rad;
+        if (!blocked(px, py)) return [px, py];
+      }
+    return [tx, ty];
   };
+  // push out of an event it is somehow inside (after a jump, or the calendar re-drew under it)
+  const unstick = () => { if (blocked(x, y)){ const [fx, fy] = freeSpot(x, y); x = fx; y = fy; } };
+  // route finding: a 16px grid over the screen, cells the bunny can't stand on are walls, breadth-first search (8 directions)
+  const G = 16;
+  let route = [], routeGoal = '', routeAt = 0, bestDist = Infinity, bestAt = 0, jumping = 0;
+  function plan(tx, ty){
+    const cols = Math.ceil(innerWidth / G), rows = Math.ceil(innerHeight / G);
+    const cell = (px, py) => [Math.max(0, Math.min(cols - 1, Math.floor(px / G))), Math.max(0, Math.min(rows - 1, Math.floor(py / G)))];
+    const [sc, sr] = cell(x, y), [gc, gr] = cell(tx, ty);
+    const free = new Uint8Array(cols * rows);
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) free[r * cols + c] = blocked(c * G + G / 2, r * G + G / 2) ? 0 : 1;
+    free[sr * cols + sc] = 1;   // wherever it stands now counts as free
+    const prev = new Int32Array(cols * rows).fill(-1), start = sr * cols + sc, goal = gr * cols + gc;
+    const q = [start]; prev[start] = start;
+    for (let i = 0; i < q.length && prev[goal] < 0; i++){
+      const cur = q[i], c = cur % cols, r = (cur / cols) | 0;
+      for (const [dc, dr] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
+        const nc = c + dc, nr = r + dr, n = nr * cols + nc;
+        if (nc < 0 || nr < 0 || nc >= cols || nr >= rows || prev[n] >= 0 || !free[n]) continue;
+        if (dc && dr && (!free[r * cols + nc] || !free[nr * cols + c])) continue;   // no squeezing past corners
+        prev[n] = cur; q.push(n);
+      }
+    }
+    if (prev[goal] < 0) return null;   // walled off
+    const path = [];
+    for (let n = goal; n !== start; n = prev[n]) path.push([(n % cols) * G + G / 2, ((n / cols) | 0) * G + G / 2]);
+    path.reverse(); path[path.length - 1] = [tx, ty];
+    return path;
+  }
   // on/off button (remembered); off hides the bunny and stops its song
   let enabled = store.get('cal.bunny', true);
   const bBtn = document.getElementById('bunnyBtn');
@@ -946,16 +978,32 @@ const musicBox = (() => {
   (function tick(now){
     now ??= performance.now();
     if (!enabled) return requestAnimationFrame(tick);
-    // aim a little behind and below the cursor so it never covers what you click
-    const tx = mx - 52 * dir, ty = my + 6;
+    // goal: a little behind and below the cursor (never covering what you click), moved to free space if an event is there
+    const [tx, ty] = freeSpot(mx - 52 * dir, my + 6);
     const dx = tx - x, dy = ty - y, dist = Math.hypot(dx, dy);
     const ox = x, oy = y;
-    if (dist > 4){
-      const step = Math.min(dist, 0.1 + dist * 0.00175);   // leisurely; a bit faster when far behind
-      x += dx / dist * step; y += dy / dist * step;
-      if (Math.abs(mx - x) > 40) dir = mx > x ? 1 : -1;
+    if (dist <= 2){ bestDist = Infinity; bestAt = now; }
+    if (dist > 2){
+      // leisurely pace, a bit faster when far behind, easing in over the last 30px
+      const step = Math.min(dist, (0.1 + dist * 0.00175) * Math.min(1, 0.35 + dist / 45));
+      if (jumping > now){ x += dx / dist * step * 2.2; y += dy / dist * step * 2.2; }   // leaping over events
+      else {
+        // re-plan when the goal moves to another cell, or twice a second (events may have moved)
+        const key = ((tx / G) | 0) + ',' + ((ty / G) | 0);
+        if (key !== routeGoal){ bestDist = Infinity; bestAt = now; }
+        if (key !== routeGoal || now - routeAt > 500){ route = plan(tx, ty) || []; routeGoal = key; routeAt = now; }
+        while (route.length > 1 && Math.hypot(route[0][0] - x, route[0][1] - y) < G * 0.75) route.shift();
+        const [wx, wy] = route[0] || [tx, ty];
+        const wd = Math.hypot(wx - x, wy - y) || 1;
+        x += (wx - x) / wd * Math.min(step, wd); y += (wy - y) / wd * Math.min(step, wd);
+        // no way through, or no real progress for 2 seconds: leap straight over
+        if (dist < bestDist - 4){ bestDist = dist; bestAt = now; }
+        if (!route.length || now - bestAt > 2000){ jumping = now + 900; bestDist = Infinity; bestAt = now; }
+      }
+      // turn around only when the cursor is clearly on the other side (no flip-flopping)
+      if (Math.abs(mx - x) > 60) dir = mx > x ? 1 : -1;
     }
-    avoid();
+    if (jumping <= now) unstick();
     // "moving" = it actually got somewhere, so a bunny stuck against an event can still nod off
     const moving = Math.hypot(x - ox, y - oy) > 0.15;
     if (moving){ stillSince = now; phase += 0.06; }
@@ -979,7 +1027,7 @@ const musicBox = (() => {
       // 4 frames per hop (crouch, push, air, land); body sways side to side for the waddle
       const p = phase % (2 * Math.PI);
       run.style.backgroundPositionX = -Math.floor(p / (2 * Math.PI) * FRAMES) * 70 + "px";
-      lift = Math.sin(p / 2) * 10;
+      lift = Math.sin(p / 2) * (jumping > now ? 34 : 10);   // big leap when hopping over an event
       tilt = Math.sin(phase / 2) * 6;
     }
     el.style.transform = `translate(${x - W/2}px, ${y - H - lift}px) scaleX(${loving ? 1 : dir}) rotate(${tilt}deg)`;   // never mirror the banner text
