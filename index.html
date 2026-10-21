@@ -940,7 +940,7 @@ const musicBox = (() => {
   const unstick = () => { if (blocked(x, y)){ const [fx, fy] = freeSpot(x, y); x = fx; y = fy; } };
   // route finding: a 16px grid over the screen, cells the bunny can't stand on are walls, breadth-first search (8 directions)
   const G = 16;
-  let route = [], routeGoal = '', routeAt = 0, bestDist = Infinity, bestAt = 0, jumping = 0;
+  let route = [], routeGoal = '', routeAt = 0;
   function plan(tx, ty){
     const cols = Math.ceil(innerWidth / G), rows = Math.ceil(innerHeight / G);
     const cell = (px, py) => [Math.max(0, Math.min(cols - 1, Math.floor(px / G))), Math.max(0, Math.min(rows - 1, Math.floor(py / G)))];
@@ -982,28 +982,25 @@ const musicBox = (() => {
     const [tx, ty] = freeSpot(mx - 52 * dir, my + 6);
     const dx = tx - x, dy = ty - y, dist = Math.hypot(dx, dy);
     const ox = x, oy = y;
-    if (dist <= 2){ bestDist = Infinity; bestAt = now; }
     if (dist > 2){
       // leisurely pace, a bit faster when far behind, easing in over the last 30px
       const step = Math.min(dist, (0.1 + dist * 0.00175) * Math.min(1, 0.35 + dist / 45));
-      if (jumping > now){ x += dx / dist * step * 2.2; y += dy / dist * step * 2.2; }   // leaping over events
-      else {
+      {
         // re-plan when the goal moves to another cell, or twice a second (events may have moved)
         const key = ((tx / G) | 0) + ',' + ((ty / G) | 0);
-        if (key !== routeGoal){ bestDist = Infinity; bestAt = now; }
         if (key !== routeGoal || now - routeAt > 500){ route = plan(tx, ty) || []; routeGoal = key; routeAt = now; }
         while (route.length > 1 && Math.hypot(route[0][0] - x, route[0][1] - y) < G * 0.75) route.shift();
-        const [wx, wy] = route[0] || [tx, ty];
-        const wd = Math.hypot(wx - x, wy - y) || 1;
-        x += (wx - x) / wd * Math.min(step, wd); y += (wy - y) / wd * Math.min(step, wd);
-        // no way through, or no real progress for 2 seconds: leap straight over
-        if (dist < bestDist - 4){ bestDist = dist; bestAt = now; }
-        if (!route.length || now - bestAt > 2000){ jumping = now + 900; bestDist = Infinity; bestAt = now; }
+        // no way through: stay put until the cursor moves somewhere reachable
+        if (route.length){
+          const [wx, wy] = route[0];
+          const wd = Math.hypot(wx - x, wy - y) || 1;
+          x += (wx - x) / wd * Math.min(step, wd); y += (wy - y) / wd * Math.min(step, wd);
+        }
       }
       // turn around only when the cursor is clearly on the other side (no flip-flopping)
       if (Math.abs(mx - x) > 60) dir = mx > x ? 1 : -1;
     }
-    if (jumping <= now) unstick();
+    unstick();
     // "moving" = it actually got somewhere, so a bunny stuck against an event can still nod off
     const moving = Math.hypot(x - ox, y - oy) > 0.15;
     if (moving){ stillSince = now; phase += 0.06; }
@@ -1027,7 +1024,7 @@ const musicBox = (() => {
       // 4 frames per hop (crouch, push, air, land); body sways side to side for the waddle
       const p = phase % (2 * Math.PI);
       run.style.backgroundPositionX = -Math.floor(p / (2 * Math.PI) * FRAMES) * 70 + "px";
-      lift = Math.sin(p / 2) * (jumping > now ? 34 : 10);   // big leap when hopping over an event
+      lift = Math.sin(p / 2) * 10;
       tilt = Math.sin(phase / 2) * 6;
     }
     el.style.transform = `translate(${x - W/2}px, ${y - H - lift}px) scaleX(${loving ? 1 : dir}) rotate(${tilt}deg)`;   // never mirror the banner text
