@@ -131,6 +131,44 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
 #songBox{position:fixed;right:16px;bottom:16px;width:240px;aspect-ratio:16/9;z-index:40;border-radius:10px;overflow:hidden;box-shadow:0 6px 20px #000a;display:none}
 #songBox.on{display:block}
 #songBox iframe{width:100%;height:100%;border:0}
+#editor{position:fixed;inset:0;z-index:20;background:var(--bg);overflow:auto;padding:12px 24px 40px;display:none}
+#editor.on{display:block}
+#editor input,#editor select,#editor textarea{background:#2a2b2e;color:var(--text);border:0;border-radius:6px;padding:10px 12px;font:inherit}
+#editor select{cursor:pointer}
+.ed-top{display:flex;align-items:center;gap:16px;max-width:1180px}
+.ed-top #eTitle{flex:1;font-size:26px;background:none;border-bottom:1px solid var(--line);border-radius:0;padding:8px 0}
+.ed-top #eSave{padding:10px 26px}
+.ed-when{margin:14px 0 0 52px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ed-line{flex-basis:100%;display:flex;align-items:center;gap:16px;margin-top:4px}
+#editor.allday #eStime,#editor.allday #eEtime{display:none}
+.chk{display:inline-flex;align-items:center;gap:10px;cursor:pointer;margin:6px 0}
+#editor .chk input{width:18px;height:18px;padding:0;accent-color:var(--accent)}
+.ed-body{display:grid;grid-template-columns:minmax(0,740px) minmax(0,400px);gap:40px;margin-top:22px}
+.ed-main{background:#131314;border-radius:24px;padding:8px 20px 24px}
+.ed-body h5{font-size:14px;color:var(--accent);margin:12px 0 14px 44px;padding-bottom:10px;border-bottom:2px solid var(--accent);display:inline-block}
+.ed-side h5{margin-left:0}
+.ed-side h6{font-size:14px;font-weight:500;margin:22px 0 6px}
+.ed-side .chk{display:flex}
+#editor .ed-side #eGuest{width:100%}
+.ed-row{display:flex;align-items:center;gap:12px;margin:10px 0;flex-wrap:wrap}
+.ed-row.top{align-items:flex-start;flex-wrap:nowrap}
+.ed-row .ic{width:32px;text-align:center;flex:none;color:var(--muted)}
+#editor .ed-row #eLoc,#editor .ed-row textarea{flex:1}
+#editor .ed-row textarea{min-height:180px;resize:vertical}
+.ed-row a{color:var(--accent)}
+.rem{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+#editor .rem input{width:70px}
+.link{color:var(--accent);font-weight:600;padding:6px 0}
+.swatch{position:relative}
+#eColorBtn{display:flex;align-items:center;gap:8px;background:#2a2b2e;border-radius:6px;padding:9px 12px}
+#eColorBtn i{width:18px;height:18px;border-radius:50%}
+.palette{position:absolute;top:44px;left:0;z-index:2;background:#2d2e31;border-radius:10px;padding:10px;display:grid;grid-template-columns:repeat(4,24px);gap:8px;box-shadow:0 6px 18px #000a}
+.palette[hidden]{display:none}
+.palette button{width:24px;height:24px;border-radius:50%}
+.palette button:hover{outline:2px solid #fff}
+.guest{display:flex;align-items:center;justify-content:space-between;padding:4px 4px 4px 12px;margin-top:8px;background:#2a2b2e;border-radius:18px}
+#eDel{margin-top:16px}
+@media (max-width:900px){.ed-body{grid-template-columns:1fr}.ed-when{margin-left:0}}
 @media (max-width:760px){
   .app{grid-template-columns:1fr}
   aside,.logo span,#search{display:none}
@@ -172,6 +210,8 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
 <div id="bunny" aria-hidden="true"><div class="run"></div><img class="sleep" src="img/sleep.png" alt=""><div class="love"><img src="img/banner.png" alt=""><b>결혼 26주년 축하</b></div><span class="note">♥</span><span class="note">♥</span><span class="note">♥</span><span class="note">♥</span></div>
 
 <div id="songBox"><div id="songPlayer"></div></div>
+
+<div id="editor"></div>
 
 <div class="modal-bg" id="modalBg">
   <div class="modal" id="modal"></div>
@@ -375,7 +415,8 @@ function renderTime(){
 }
 
 function evEl(e, s, en, gridRow){
-  const c = calOf(e.cal), el = document.createElement('div');
+  const c = {...calOf(e.cal)}, el = document.createElement('div');
+  if (e.color) c.color = e.color;
   el.dataset.s = s; el.dataset.en = en;
   if (isBar(e)){
     el.className='ev bar'; el.style.background=c.color;
@@ -533,35 +574,37 @@ async function gSync(force){
   render();
 }
 
+// Google's event colours (colorId 1..11)
+const G_COLORS = {1:['#7986cb','라벤더'],2:['#33b679','세이지'],3:['#8e24aa','포도'],4:['#e67c73','플라밍고'],5:['#f6bf26','바나나'],
+  6:['#f4511e','귤'],7:['#039be5','공작'],8:['#616161','흑연'],9:['#3f51b5','블루베리'],10:['#0b8043','바질'],11:['#d50000','토마토']};
 function fromG(it, cal){
-  const e = {id:'g'+it.id, gid:it.id, cal, title:it.summary || '(제목 없음)'};
+  const e = {id:'g'+it.id, gid:it.id, cal, title:it.summary || '(제목 없음)', raw:it, color:G_COLORS[it.colorId]?.[0]};
   if (it.start.date){   // all-day: Google's end date is exclusive
     e.allDay = true; e.start = it.start.date; e.end = ymd(addDays(parse(it.end.date), -1));
   } else {
     const s = new Date(it.start.dateTime), en = new Date(it.end.dateTime);
     e.start = ymd(s); e.time = `${pad(s.getHours())}:${pad(s.getMinutes())}`;
-    e.end = ymd(new Date(Math.max(+s, en - 1))); e.dur = (en - s) / 6e4;
+    e.end = ymd(new Date(Math.max(+s, en - 1))); e.endTime = `${pad(en.getHours())}:${pad(en.getMinutes())}`;
   }
   return e;
 }
-function toG(r){
-  if (!r.time) return {summary:r.title, start:{date:r.start}, end:{date:ymd(addDays(parse(r.end), 1))}};
-  const [h, m] = r.time.split(':').map(Number);
-  const s = parse(r.start); s.setHours(h, m);
-  const en = parse(r.end); en.setHours(h, m + (r.start === r.end ? (r.dur || 60) : 60));
-  return {summary:r.title, start:{dateTime:s.toISOString(), timeZone:tz}, end:{dateTime:en.toISOString(), timeZone:tz}};
-}
+const at = (day, hm) => { const d = parse(day), [h, m] = hm.split(':').map(Number); d.setHours(h, m); return d; };
 
-// save to the chosen Google calendar; moving to another calendar = create there + delete here
-async function saveEvent(old, rec){
-  const body = JSON.stringify(toG({...rec, dur:old.dur}));
-  const same = old.gid && old.cal === rec.cal;
-  const it = await gFetch(gPath(rec.cal, same ? old.gid : ''), {method: same ? 'PATCH' : 'POST', body});
-  if (old.gid && !same) await removeEvent(old);
-  gEvents = gEvents.filter(x => x.id !== old.id).concat(fromG(it, rec.cal));
+// body = the Google event fields built by the editor; old = the event being edited (or {} for new)
+async function saveEvent(old, cal, body, {meet = false, notify = 'none'} = {}){
+  let it;
+  const q = `?sendUpdates=${notify}` + (meet ? '&conferenceDataVersion=1' : '');
+  if (!old.gid) it = await gFetch(gPath(cal) + q, {method:'POST', body:JSON.stringify(body)});
+  else {
+    let gid = old.gid;
+    // another calendar: Google moves the same event (keeps its id, guests and history)
+    if (old.cal !== cal) gid = (await gFetch(gPath(old.cal, gid) + `/move?destination=${encodeURIComponent(cal.slice(2))}`, {method:'POST'})).id;
+    it = await gFetch(gPath(cal, gid) + q, {method:'PATCH', body:JSON.stringify(body)});
+  }
+  gEvents = gEvents.filter(x => x.id !== old.id).concat(fromG(it, cal));
 }
-async function removeEvent(e){
-  await gFetch(gPath(e.cal, e.gid), {method:'DELETE'});
+async function removeEvent(e, notify = 'none'){
+  await gFetch(gPath(e.cal, e.gid) + `?sendUpdates=${notify}`, {method:'DELETE'});
   gEvents = gEvents.filter(x => x.id !== e.id);
 }
 
@@ -599,40 +642,196 @@ function showDay(d){
   bg.classList.add('on');
 }
 
+// full-screen editor laid out like Google Calendar's event page
+const REPEAT = [['', '반복 안함'], ['RRULE:FREQ=DAILY', '매일'], ['WEEKLY', '매주'], ['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR', '주중 매일(월-금)'],
+  ['RRULE:FREQ=MONTHLY', '매월'], ['RRULE:FREQ=YEARLY', '매년']];
+const UNITS = [[1, '분'], [60, '시간'], [1440, '일'], [10080, '주']];
+const DOW_RR = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
 async function openEditor(e){
-  const isNew = !e.id;
-  const own = CALS.filter(c=>!c.readonly);
+  const isNew = !e.gid;
+  const own = CALS.filter(c => !c.readonly);
   if (!own.length){   // nowhere to save until a Google calendar is linked
     if (await askConfirm('일정은 구글 캘린더에 저장됩니다. 구글에 연결할까요?', '구글 연결')) gConnect();
     return;
   }
-  modal.innerHTML = `<h3>${isNew?'새 일정':'일정 수정'}</h3>
-    <label>제목</label><input id="fTitle" value="${esc(e.title||'')}" placeholder="제목 추가">
-    <div class="row"><div><label>시작</label><input type="date" id="fStart" value="${e.start}"></div>
-    <div><label>종료</label><input type="date" id="fEnd" value="${e.end||e.start}"></div></div>
-    <div class="row"><div><label>시각 (비우면 종일)</label><input type="time" id="fTime" value="${e.time||''}"></div>
-    <div><label>캘린더</label><select id="fCal">${own.map(c=>`<option value="${c.id}" ${c.id===e.cal?'selected':''}>${c.name}</option>`).join('')}</select></div></div>
-    <div class="actions">${isNew?'':'<button class="btn danger" id="del">삭제</button>'}
-    <button class="btn" id="x">취소</button><button class="btn primary" id="ok">저장</button></div>`;
-  const $ = id => modal.querySelector('#'+id);
-  $('x').onclick = close;
-  $('ok').onclick = async () => {
-    const title = $('fTitle').value.trim() || '(제목 없음)';
-    let start = $('fStart').value, end = $('fEnd').value || start;
+  const raw = e.raw || {};
+  const ed = document.getElementById('editor');
+  const stime = e.time || '09:00';
+  const etime = e.endTime || `${pad((+stime.slice(0, 2) + 1) % 24)}:${stime.slice(3)}`;
+  ed.innerHTML = `
+  <div class="ed-top">
+    <button class="icon" id="eClose" title="닫기">✕</button>
+    <input id="eTitle" placeholder="제목 추가">
+    <button class="btn primary" id="eSave">저장</button>
+  </div>
+  <div class="ed-when">
+    <input type="date" id="eStart"><input type="time" id="eStime"> <span>-</span>
+    <input type="time" id="eEtime"><input type="date" id="eEnd">
+    <div class="ed-line">
+      <label class="chk"><input type="checkbox" id="eAll"> 종일</label>
+      <select id="eRepeat"></select>
+    </div>
+  </div>
+  <div class="ed-body">
+    <section class="ed-main">
+      <h5>일정 세부정보</h5>
+      <div class="ed-row"><span class="ic">🎥</span><label class="chk" id="eMeetBox"><input type="checkbox" id="eMeet"> Google Meet 화상 회의 추가</label></div>
+      <div class="ed-row"><span class="ic">📍</span><input id="eLoc" placeholder="위치 추가"></div>
+      <div class="ed-row top"><span class="ic">🔔</span><div><div id="eRems"></div><button class="link" id="eRemAdd">알림 추가</button></div></div>
+      <div class="ed-row"><span class="ic">📅</span><select id="eCal"></select>
+        <div class="swatch"><button id="eColorBtn"><i></i>▾</button><div class="palette" id="ePalette" hidden></div></div></div>
+      <div class="ed-row"><span class="ic">💼</span><select id="eBusy"><option value="opaque">바쁨</option><option value="transparent">한가함</option></select>
+        <select id="eVis"><option value="default">기본 공개 설정</option><option value="public">공개</option><option value="private">비공개</option></select></div>
+      <div class="ed-row top"><span class="ic">≡</span><textarea id="eDesc" placeholder="설명 추가"></textarea></div>
+      ${isNew ? '' : '<button class="btn danger" id="eDel">일정 삭제</button>'}
+    </section>
+    <section class="ed-side">
+      <h5>참석자</h5>
+      <input id="eGuest" placeholder="참석자 추가 (이메일 입력 후 Enter)">
+      <div id="eGuests"></div>
+      <h6>참석자 권한</h6>
+      <label class="chk"><input type="checkbox" id="gMod"> 일정 수정</label>
+      <label class="chk"><input type="checkbox" id="gInv"> 다른 사용자 초대</label>
+      <label class="chk"><input type="checkbox" id="gSee"> 참석자 명단 보기</label>
+    </section>
+  </div>`;
+  const $ = id => ed.querySelector('#' + id);
+
+  // fill in values (set as properties, never as HTML)
+  $('eTitle').value = isNew ? '' : (raw.summary || '');
+  $('eStart').value = e.start; $('eEnd').value = e.end || e.start;
+  $('eStime').value = stime; $('eEtime').value = etime;
+  $('eAll').checked = isNew ? !e.time : !!e.allDay;
+  const syncAll = () => ed.classList.toggle('allday', $('eAll').checked);
+  $('eAll').onchange = syncAll; syncAll();
+  for (const [v, t] of REPEAT){
+    const o = new Option(t, v === 'WEEKLY' ? '' : v);
+    if (v === 'WEEKLY') o.dataset.weekly = '1';
+    $('eRepeat').add(o);
+  }
+  if (raw.recurringEventId){   // an occurrence of a repeating event: edits apply to this one only
+    $('eRepeat').innerHTML = ''; $('eRepeat').add(new Option('반복 일정 (이 일정만 수정)', '')); $('eRepeat').disabled = true;
+  }
+  if (raw.hangoutLink){
+    $('eMeetBox').innerHTML = '';
+    const a = document.createElement('a');
+    a.href = raw.hangoutLink; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Google Meet으로 참여';
+    $('eMeetBox').appendChild(a);
+  }
+  $('eLoc').value = raw.location || '';
+  $('eDesc').value = (raw.description || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
+  for (const c of own) $('eCal').add(new Option(c.name, c.id, false, c.id === (e.cal || own[0].id)));
+  $('eBusy').value = raw.transparency || 'opaque';
+  $('eVis').value = raw.visibility || 'default';
+
+  // colour: the calendar's own colour, or one of Google's 11 event colours
+  let colorId = raw.colorId || '';
+  const paintSwatch = () => { $('eColorBtn').firstChild.style.background = G_COLORS[colorId]?.[0] || calOf($('eCal').value).color; };
+  for (const [id, [hex, name]] of [['', [null, '캘린더 색상']], ...Object.entries(G_COLORS)]){
+    const b = document.createElement('button'); b.title = name;
+    b.style.background = hex || calOf($('eCal').value).color;
+    b.onclick = () => { colorId = id; paintSwatch(); $('ePalette').hidden = true; };
+    $('ePalette').appendChild(b);
+  }
+  $('eColorBtn').onclick = () => { $('ePalette').hidden = !$('ePalette').hidden; };
+  $('eCal').onchange = paintSwatch; paintSwatch();
+
+  // reminders (Google allows up to 5)
+  const rems = raw.reminders?.overrides ? raw.reminders.overrides.map(r => ({...r}))
+    : isNew || raw.reminders?.useDefault ? [{method:'popup', minutes: $('eAll').checked ? 1440 : 30}] : [];
+  const drawRems = () => {
+    $('eRems').innerHTML = '';
+    rems.forEach((r, i) => {
+      const unit = [...UNITS].reverse().find(([u]) => r.minutes % u === 0)?.[0] || 1;
+      const row = document.createElement('div'); row.className = 'rem';
+      row.innerHTML = `<select><option value="popup">알림</option><option value="email">이메일</option></select>
+        <input type="number" min="0"><select>${UNITS.map(([u, t]) => `<option value="${u}">${t}</option>`).join('')}</select><span>전</span><button class="icon">✕</button>`;
+      const [m, n, u] = row.querySelectorAll('select,input');
+      m.value = r.method; n.value = r.minutes / unit; u.value = unit;
+      const upd = () => { r.method = m.value; r.minutes = Math.max(0, +n.value) * +u.value; };
+      m.onchange = n.oninput = u.onchange = upd;
+      row.querySelector('button').onclick = () => { rems.splice(i, 1); drawRems(); };
+      $('eRems').appendChild(row);
+    });
+  };
+  $('eRemAdd').onclick = () => { if (rems.length < 5){ rems.push({method:'popup', minutes:10}); drawRems(); } };
+  drawRems();
+
+  // guests
+  const guests = (raw.attendees || []).filter(a => !a.self && !a.resource).map(a => a.email);
+  const before = guests.join(',');
+  const drawGuests = () => {
+    $('eGuests').innerHTML = '';
+    guests.forEach((g, i) => {
+      const chip = document.createElement('div'); chip.className = 'guest';
+      chip.innerHTML = '<span></span><button class="icon">✕</button>';
+      chip.firstChild.textContent = g;
+      chip.lastChild.onclick = () => { guests.splice(i, 1); drawGuests(); };
+      $('eGuests').appendChild(chip);
+    });
+  };
+  $('eGuest').onkeydown = ev => {
+    if (ev.key !== 'Enter' && ev.key !== ',') return;
+    ev.preventDefault();
+    const v = $('eGuest').value.trim();
+    if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v) && !guests.includes(v)){ guests.push(v); drawGuests(); }
+    $('eGuest').value = '';
+  };
+  drawGuests();
+  $('gMod').checked = !!raw.guestsCanModify;
+  $('gInv').checked = raw.guestsCanInviteOthers !== false;
+  $('gSee').checked = raw.guestsCanSeeOtherGuests !== false;
+
+  const shut = () => ed.classList.remove('on');
+  $('eClose').onclick = shut;
+  ed.onkeydown = ev => { if (ev.key === 'Escape' && !bg.classList.contains('on')) shut(); };
+
+  $('eSave').onclick = async () => {
+    let start = $('eStart').value, end = $('eEnd').value || start;
     if (!start) return;
     if (end < start) end = start;
-    const time = $('fTime').value;
-    const rec = {id: e.id || Date.now(), cal:$('fCal').value, title, start, end, time: time||undefined, allDay: !time};
-    $('ok').disabled = true;
-    try { await saveEvent(e, rec); } catch (err) { $('ok').disabled = false; return alert('저장 실패: ' + err.message); }
-    close(); render();
+    const all = $('eAll').checked;
+    const body = {
+      summary: $('eTitle').value.trim() || '(제목 없음)',
+      location: $('eLoc').value.trim(),
+      description: $('eDesc').value,
+      transparency: $('eBusy').value,
+      visibility: $('eVis').value,
+      colorId: colorId || null,
+      reminders: {useDefault:false, overrides: rems.slice(0, 5)},
+      guestsCanModify: $('gMod').checked, guestsCanInviteOthers: $('gInv').checked, guestsCanSeeOtherGuests: $('gSee').checked,
+      attendees: guests.map(email => ({...(raw.attendees || []).find(a => a.email === email), email})),
+    };
+    if (all) Object.assign(body, {start:{date:start, dateTime:null}, end:{date:ymd(addDays(parse(end), 1)), dateTime:null}});
+    else {
+      const s1 = at(start, $('eStime').value || '09:00');
+      let e1 = at(end, $('eEtime').value || '10:00');
+      if (e1 <= s1) e1 = new Date(+s1 + 36e5);
+      Object.assign(body, {start:{dateTime:s1.toISOString(), timeZone:tz, date:null}, end:{dateTime:e1.toISOString(), timeZone:tz, date:null}});
+    }
+    if (!$('eRepeat').disabled){
+      const o = $('eRepeat').selectedOptions[0];
+      const rule = o.dataset.weekly ? `RRULE:FREQ=WEEKLY;BYDAY=${DOW_RR[parse(start).getDay()]}` : o.value;
+      if (rule || raw.recurrence) body.recurrence = rule ? [rule] : [];
+    }
+    const meet = !!$('eMeet')?.checked;
+    if (meet) body.conferenceData = {createRequest:{requestId:'tozzi-' + Date.now(), conferenceSolutionKey:{type:'hangoutsMeet'}}};
+    let notify = 'none';
+    if (guests.length && guests.join(',') !== before)
+      notify = await askConfirm('참석자에게 Google Calendar 초대 이메일을 보낼까요?', '보내기') ? 'all' : 'none';
+    $('eSave').disabled = true;
+    try { await saveEvent(e, $('eCal').value, body, {meet, notify}); }
+    catch (err) { $('eSave').disabled = false; return alert('저장 실패: ' + err.message); }
+    shut(); gSync(true).catch(gErr);   // re-read so repeating events show every occurrence
   };
-  if (!isNew) $('del').onclick = async () => {
-    if (!await askConfirm('이 일정을 삭제할까요?', '삭제')) return;
-    try { await removeEvent(e); } catch (err) { return alert('삭제 실패: ' + err.message); }
-    close(); render();
+  if (!isNew) $('eDel').onclick = async () => {
+    if (!await askConfirm(raw.recurringEventId ? '반복 일정 중 이 일정만 삭제할까요?' : '이 일정을 삭제할까요?', '삭제')) return;
+    const notify = guests.length && await askConfirm('참석자에게 취소 알림을 보낼까요?', '보내기') ? 'all' : 'none';
+    try { await removeEvent(e, notify); } catch (err) { return alert('삭제 실패: ' + err.message); }
+    shut(); render();
   };
-  bg.classList.add('on'); $('fTitle').focus();
+  close();   // the small day-list box, if it was open
+  ed.classList.add('on'); $('eTitle').focus();
 }
 
 // ---------- controls ----------
