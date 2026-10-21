@@ -942,8 +942,8 @@ const musicBox = (() => {
   // route finding: a 16px grid over the screen, cells the bunny can't stand on are walls, breadth-first search (8 directions)
   const G = 16;
   let route = [], routeGoal = '', routeAt = 0;
-  // hopping around the same spot (within 40px) for 10s without reaching the cursor makes it sit down and cry
-  const CRY_AFTER = 10000, CRY_MIN = 4000, SAME_SPOT = 40;
+  // hopping around the same spot (within 10px) for 10s without reaching the cursor makes it sit down and cry
+  const CRY_AFTER = 10000, CRY_MIN = 4000, SAME_SPOT = 10;   // small: at this slow pace honest progress is only ~15px per 10s
   let spot = [0, 0], spotSince = 0, cryingSince = 0, cryAt = [0, 0];
   const cryImg = el.querySelector('img.cry');
   function plan(tx, ty){
@@ -995,7 +995,7 @@ const musicBox = (() => {
     }
     if (!cryingSince && dist > 2){
       // leisurely pace, a bit faster when far behind, easing in over the last 30px
-      const step = Math.min(dist, (0.05 + dist * 0.000875) * Math.min(1, 0.35 + dist / 45));
+      const step = Math.min(dist, (0.025 + dist * 0.0004375) * Math.min(1, 0.35 + dist / 45));
       {
         // re-plan when the goal moves to another cell, or twice a second (events may have moved)
         const key = ((tx / G) | 0) + ',' + ((ty / G) | 0);
@@ -1016,13 +1016,13 @@ const musicBox = (() => {
     const moving = Math.hypot(x - ox, y - oy) > 0.15;
     // still trying = not at the cursor yet: keeps hopping (in place if it has to), no banner until it gets there
     const trying = dist > 20 && !cryingSince;
-    if (moving || trying){ stillSince = now; phase += 0.04; }
+    if (moving || trying){ stillSince = now; phase += 0.03; }
     // the "spot" it has to get out of: reset once it gets away from it, or reaches the cursor
     if (!trying || Math.hypot(x - spot[0], y - spot[1]) > SAME_SPOT){ spot = [x, y]; spotSince = now; }
     if (!cryingSince && now - spotSince > CRY_AFTER){ cryingSince = now; cryAt = [mx, my]; musicBox.pause(); }
     el.classList.toggle('cry', !!cryingSince);
     if (cryingSince) stillSince = now;   // no banner while crying
-    else if (phase % (2 * Math.PI) > 0.2) phase += 0.04;   // finish the hop in progress, then land
+    else if (phase % (2 * Math.PI) > 0.2) phase += 0.03;   // finish the hop in progress, then land
     // when it stops: first holds up a heart ("I love you"), then dozes off
     const idle = now - stillSince, asleep = idle > SLEEP_AFTER, loving = idle > LOVE_AFTER && !asleep;
     el.classList.toggle('zz', asleep);
