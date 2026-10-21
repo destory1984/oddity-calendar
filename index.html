@@ -969,7 +969,7 @@ const musicBox = (() => {
     const t = ctx.currentTime, src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
     src.buffer = noise;
     f.type = 'bandpass'; f.frequency.value = 1800 + Math.random() * 1200; f.Q.value = .8;
-    const vol = .12 + Math.random() * .05;
+    const vol = .06 + Math.random() * .025;
     g.gain.setValueAtTime(0, t);
     g.gain.linearRampToValueAtTime(vol, t + .015);
     g.gain.exponentialRampToValueAtTime(.0001, t + .09);
