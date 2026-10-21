@@ -45,7 +45,8 @@ python -m http.server 8765
 ## 사용한 글꼴과 그림
 
 - 본문: [Pretendard](https://github.com/orioncactus/pretendard) 1.3.9, SIL OFL 1.1. jsDelivr CDN 으로 불러온다.
-- 제목: [Gaegu](https://fonts.google.com/specimen/Gaegu), SIL OFL 1.1. Google Fonts 로 불러온다.
+- 제목: [Single Day](https://fonts.google.com/specimen/Single+Day), SIL OFL 1.1. Google Fonts 로 불러온다.
+- 현수막 글자: [Gaegu](https://fonts.google.com/specimen/Gaegu), SIL OFL 1.1. Google Fonts 로 불러온다.
 - `img/hop.png`, `img/banner.png`, `img/sleep.png`: ChatGPT 이미지 생성으로 그린 토끼다. 뛰는 그림 4장, 빈 현수막을 든 그림 1장, 조는 그림 1장이다. 현수막 글자("결혼 26주년 축하")는 그림이 아니라 HTML 글자로 얹었다. 토끼는 마우스를 따라오고 일정 칸은 피해서 다닌다. 멈추고 1.5초 뒤에는 현수막을 들고 흔든다. 조는 모습은 지금은 꺼 두었다.
 - 현수막이 올라가면 이즈라엘 카마카위올레의 「Somewhere over the Rainbow」가 흐른다. 음원을 저장소에 두지 않고, 권리자(Mountain Apple Company)가 유튜브에 올린 공식 영상을 오른쪽 아래 작은 플레이어로 끼워 넣어 튼다. 토끼가 다시 뛰면 멈추고, 현수막을 다시 들면 이어서 튼다.
 - 유튜브를 불러오지 못하면 Web Audio 로 만든 짧은 오르골 소리(멘델스존 「결혼 행진곡」 첫머리의 팡파르를 본뜬 소절)가 대신 울린다.
