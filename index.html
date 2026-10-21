@@ -50,6 +50,8 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
 .dnum em:hover{background:var(--hover)}
 .dnum.other{color:#6f7378}
 .dnum.today em{background:var(--accent);color:#062e6f;font-weight:bold}
+.lunar{font-size:10px;color:var(--muted);margin-left:3px;font-style:normal;font-weight:normal}
+.t-head .lunar{display:block;margin:2px 0 0}
 .ev{z-index:2;margin:0 4px;padding:0 8px;font-size:12.5px;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:4px;cursor:pointer}
 .ev.bar{color:#e8eaed}
 .ev.dot{display:flex;align-items:center;gap:6px}
@@ -200,6 +202,7 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
     <div class="mini" id="mini"></div>
     <h4 id="gHead" hidden>구글 캘린더</h4><div id="gCals"></div>
     <h4 id="otherHead">휴일</h4><div id="otherCals"></div>
+    <h4>보기</h4><div id="viewOpts"></div>
   </aside>
   <main>
     <div class="dow"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
@@ -263,6 +266,19 @@ function inkOn(color){
   const L = .2126 * lin(n >> 16) + .7152 * lin(n >> 8 & 255) + .0722 * lin(n & 255);
   return L > .3 ? '#1f1f1f' : '#fff';
 }
+// lunar date from the browser's built-in Korean lunisolar calendar (dangi), e.g. "9.11", leap month "윤6.1"
+const DANGI = (() => { try { return new Intl.DateTimeFormat('ko-KR-u-ca-dangi', {month:'numeric', day:'numeric'}); } catch { return null; } })();
+const lunarCache = new Map();
+function lunarOf(d){
+  if (!DANGI) return '';
+  const k = +d;
+  if (!lunarCache.has(k)){
+    const p = Object.fromEntries(DANGI.formatToParts(d).map(x => [x.type, x.value]));
+    lunarCache.set(k, `${p.month}.${p.day}`);
+  }
+  return lunarCache.get(k);
+}
+let showLunar = store.get('cal.lunar', true) && !!DANGI;
 const calOf = id => CALS.find(c=>c.id===id) || CALS[0];
 const isBar = e => e.allDay || e.start !== e.end;
 
@@ -300,7 +316,7 @@ function render(){
       n.className = 'dnum' + (d.getMonth()!==cur.getMonth()?' other':'') + (+d===+today?' today':'');
       n.style.gridColumn = i+1;
       const label = d.getDate()===1 ? `${d.getMonth()+1}월 1일` : d.getDate();
-      n.innerHTML = `<em>${label}</em>`;
+      n.innerHTML = `<em>${label}</em>` + (showLunar ? `<small class="lunar">${lunarOf(d)}</small>` : '');
       n.firstChild.onclick = () => showDay(d);
       row.appendChild(n);
     }
@@ -359,7 +375,7 @@ function renderTime(){
   head.appendChild(document.createElement('div'));
   for (const d of days){
     const h = document.createElement('div'); h.className = 't-head' + (+d===+today ? ' today' : '');
-    h.innerHTML = `${DOW[d.getDay()]}<em>${d.getDate()}</em>`;
+    h.innerHTML = `${DOW[d.getDay()]}<em>${d.getDate()}</em>` + (showLunar ? `<small class="lunar">음 ${lunarOf(d)}</small>` : '');
     h.querySelector('em').onclick = () => { cur = d; view = 'day'; render(); };
     head.appendChild(h);
   }
@@ -465,6 +481,13 @@ function renderSide(){
       it.onclick = () => { on ? hidden.add(c.id) : hidden.delete(c.id); save(); render(); };
       box.appendChild(it);
     }
+  }
+  const vo = document.getElementById('viewOpts'); vo.innerHTML = '';
+  if (DANGI){
+    const it = document.createElement('div'); it.className = 'cal-item';
+    it.innerHTML = `<span class="box" style="border-color:#9aa0a6;background:${showLunar ? '#9aa0a6' : 'transparent'};color:#1f1f1f">${showLunar ? '✓' : ''}</span>음력 날짜`;
+    it.onclick = () => { showLunar = !showLunar; store.set('cal.lunar', showLunar); render(); };
+    vo.appendChild(it);
   }
 }
 
