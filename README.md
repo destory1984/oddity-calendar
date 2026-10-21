@@ -77,7 +77,7 @@ python -m http.server 8765
 | 무엇 | 출처 | 라이선스 |
 |---|---|---|
 | 고양이 그림 `img/neko/neko.png` | [crgimenes/neko](https://github.com/crgimenes/neko) (원조 Neko, 1989) | BSD 2-Clause (`img/neko/LICENSE.txt`) |
-| 소리 아이콘 `img/ui/icon-sound-*.svg` | 같은 사람의 oddity 프로젝트 | MIT |
+| 소리 아이콘 `img/ui/icon-sound-*.svg`, 화살표 아이콘 `img/ui/icon-prev.svg`, `icon-next.svg` | 같은 사람의 oddity 프로젝트 | MIT |
 | 본문 글꼴 Pretendard | [orioncactus/pretendard](https://github.com/orioncactus/pretendard), CDN 으로 불러옴 | SIL OFL 1.1 |
 | 제목 글꼴 Single Day, 현수막 글꼴 Gaegu | Google Fonts, 링크로 불러옴 | SIL OFL 1.1 |
 | 토끼 그림 `img/*.png`, 앱 아이콘 `img/app/` | ChatGPT 이미지 생성으로 이 저장소를 위해 만듦 | 이 저장소와 같이 MIT |

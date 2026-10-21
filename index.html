@@ -136,6 +136,11 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
 #bunnyBtn.off{opacity:.45}
 #bunnyBtn.off::after{content:"";position:absolute;width:24px;height:2px;background:#eef3ff;transform:rotate(-40deg);border-radius:1px}
 #soundBtn{display:grid;place-items:center}
+/* prev/next arrows from the oddity project (MIT) */
+.nav{display:inline-grid;place-items:center;vertical-align:middle}
+.nav::before{content:"";width:20px;height:20px;background:center/contain no-repeat}
+.nav.prev::before{background-image:url(img/ui/icon-prev.svg)}
+.nav.next::before{background-image:url(img/ui/icon-next.svg)}
 #soundBtn::before{content:"";width:22px;height:22px;background:url(img/ui/icon-sound-on.svg) center/contain no-repeat}
 #soundBtn.off::before{background-image:url(img/ui/icon-sound-off.svg)}
 #soundBtn.off{opacity:.8}
@@ -219,8 +224,8 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
   <header>
     <div class="logo"><b id="logoDay">20</b><span>토찌 달력</span></div>
     <button class="pill" id="todayBtn">오늘</button>
-    <button class="icon" id="prev">‹</button>
-    <button class="icon" id="next">›</button>
+    <button class="icon nav prev" id="prev" title="이전" aria-label="이전"></button>
+    <button class="icon nav next" id="next" title="다음" aria-label="다음"></button>
     <div class="title" id="title"></div>
     <div class="spacer"></div>
     <span id="gStatus" style="color:var(--muted);font-size:12px"></span>
@@ -232,7 +237,7 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
   </header>
   <aside>
     <button class="create" id="createBtn">＋ 만들기</button>
-    <div class="mini-head"><b id="miniTitle"></b><span><button class="icon" id="mPrev">‹</button><button class="icon" id="mNext">›</button></span></div>
+    <div class="mini-head"><b id="miniTitle"></b><span><button class="icon nav prev" id="mPrev" title="이전 달" aria-label="이전 달"></button><button class="icon nav next" id="mNext" title="다음 달" aria-label="다음 달"></button></span></div>
     <div class="mini" id="mini"></div>
     <h4 id="gHead" hidden>구글 캘린더</h4><div id="gCals"></div>
     <h4 id="otherHead">휴일</h4><div id="otherCals"></div>
