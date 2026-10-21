@@ -927,11 +927,24 @@ const musicBox = (() => {
               onError:() => { ytReady = false; box.classList.remove('on'); }}});
   };
   const tag = document.createElement('script'); tag.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(tag);
-  function pause(){ if (ytReady) yt.pauseVideo(); box.classList.remove('on'); }
+  // stopping fades the song out over 1.5s (volume 100 -> 0), then pauses and hides the player
+  const FADE_MS = 1500;
+  let fadeTimer = 0;
+  function pause(){
+    if (!ytReady || !box.classList.contains('on')){ box.classList.remove('on'); return; }
+    if (fadeTimer) return;   // already fading
+    const t0 = performance.now(), v0 = yt.getVolume?.() ?? 100;
+    fadeTimer = setInterval(() => {
+      const k = Math.min(1, (performance.now() - t0) / FADE_MS);
+      yt.setVolume(Math.round(v0 * (1 - k)));
+      if (k >= 1){ clearInterval(fadeTimer); fadeTimer = 0; yt.pauseVideo(); yt.setVolume(100); box.classList.remove('on'); }
+    }, 50);
+  }
+  const cancelFade = () => { if (fadeTimer){ clearInterval(fadeTimer); fadeTimer = 0; } if (ytReady) yt.setVolume(100); };
 
   function play(force){
     if (!on) return;
-    if (ytReady){ box.classList.add('on'); yt.playVideo(); return; }
+    if (ytReady){ cancelFade(); box.classList.add('on'); yt.playVideo(); return; }
     if (!ctx || ctx.state !== 'running') return;
     if (!force && performance.now() - lastPlay < 20000) return;   // not again for 20s
     lastPlay = performance.now();
