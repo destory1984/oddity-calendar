@@ -101,7 +101,8 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
 .now{position:absolute;left:0;right:0;height:2px;background:#ea4335;z-index:3}
 .now::before{content:"";position:absolute;left:-6px;top:-5px;width:12px;height:12px;border-radius:50%;background:#ea4335}
 #bunny{position:fixed;left:0;top:0;width:70px;height:73px;pointer-events:none;z-index:50;will-change:transform;filter:drop-shadow(0 4px 3px #0006)}
-#bunny .run{position:absolute;inset:0;background:url(img/hop.png) 0 0/280px 73px no-repeat}
+/* quarter-view hop: 4 frames x 5 headings (up, up-right, right, down-right, down); left-hand headings are mirrored */
+#bunny .run{position:absolute;left:-7px;bottom:0;width:84px;height:73px;background:url(img/quarter.png) 0 0/336px 365px no-repeat}
 #bunny .sleep{position:absolute;left:12px;bottom:2px;width:46px;height:29px;transform-origin:50% 100%;display:none}
 #bunny .love{position:absolute;left:-55px;bottom:0;width:180px;height:172px;transform-origin:50% 100%;display:none}
 #bunny .love img{width:100%;height:100%}
@@ -1033,6 +1034,7 @@ const musicBox = (() => {
     nekoEl.style.backgroundPositionX = -NK[f] * 64 + 'px';
     el.style.transform = `translate(${x - W/2}px, ${y - H}px)`;   // the cat has its own left/right frames: never mirrored
   }
+  let hopRow = 2;   // heading row in the quarter-view sheet; starts side-on
   let side = -1, lastT = 0;   // side of the cursor it settles on: -1 left, 1 right
   let goal = [0, 0], goalKey = '';   // picked once per cursor position, so it doesn't drift as the animal moves
   (function tick(now){
@@ -1074,6 +1076,11 @@ const musicBox = (() => {
       }
       // face where it's going; once there, face the cursor
       if (Math.abs(x - ox) > 0.05) dir = x > ox ? 1 : -1;
+      // which of the 5 drawn headings to show (0 up .. 4 down), from the direction of travel
+      if (Math.hypot(x - ox, y - oy) > 0.05){
+        const deg = Math.atan2(y - oy, Math.abs(x - ox)) * 180 / Math.PI;   // -90 up .. 90 down, left/right folded together
+        hopRow = Math.max(0, Math.min(4, Math.round((deg + 90) / 45)));
+      }
     }
     if (dist <= 2) dir = mx > x ? 1 : -1;
     unstick();
@@ -1113,9 +1120,9 @@ const musicBox = (() => {
     } else {
       // 4 frames per hop (crouch, push, air, land); body sways side to side for the waddle
       const p = phase % (2 * Math.PI);
-      run.style.backgroundPositionX = -Math.floor(p / (2 * Math.PI) * FRAMES) * 70 + "px";
+      run.style.backgroundPosition = `${-Math.floor(p / (2 * Math.PI) * FRAMES) * 84}px ${-hopRow * 73}px`;
       lift = Math.sin(p / 2) * 10;
-      tilt = Math.sin(phase / 2) * 6;
+      tilt = Math.sin(phase / 2) * (hopRow === 0 || hopRow === 4 ? 2 : 6);   // little sway when seen from the front or back
     }
     el.style.transform = `translate(${x - W/2}px, ${y - H - lift}px) scaleX(${loving ? 1 : dir}) rotate(${tilt}deg)`;   // never mirror the banner text
     requestAnimationFrame(tick);
