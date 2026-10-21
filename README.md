@@ -66,7 +66,7 @@ python -m http.server 8765
 
 왼쪽 "보기"에서 "토끼 대신 고양이(Neko)"를 켜면 토끼 대신 고양이가 마우스를 쫓는다. 가는 방향(8방향)에 맞는 그림으로 달리고, 닿으면 앉았다가 몸을 핥고 하품한 뒤 잠든다. 같은 자리에서 10초 동안 맴돌면 바닥을 긁는다. 현수막과 노래는 토끼만 한다.
 
-고양이 그림 24장(`img/neko/neko.png`, 32px)은 [crgimenes/neko](https://github.com/crgimenes/neko) 의 `sprites/` 에서 가져와 한 장으로 이어 붙였다. 그 저장소는 BSD 2-Clause 라이선스(`img/neko/LICENSE.txt`)이며, 그림은 1989년 원조 Neko 프로그램의 것이다.
+고양이 그림(`img/neko/neko.png`, 32px)의 앞 24장은 [crgimenes/neko](https://github.com/crgimenes/neko) 의 `sprites/` 에서 가져왔다. 뒤 16장은 달리기 중간 컷(8방향 x 2장)으로, 원래 그림을 참고해 ChatGPT 이미지 생성으로 그린 뒤 32px 도트로 다시 맞춘 것이다. 그래서 고양이는 방향마다 4컷으로 달린다. 그 저장소는 BSD 2-Clause 라이선스(`img/neko/LICENSE.txt`)이며, 그림은 1989년 원조 Neko 프로그램의 것이다.
 
 ## 라이선스
 

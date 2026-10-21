@@ -1,7 +1,7 @@
 // Service worker: lets the installed app open offline and start fast.
 // The page itself is fetched network-first so updates show up right away;
 // pictures and icons come from the cache. Google sign-in and Calendar calls are never cached.
-const CACHE = 'tozzi-v3';
+const CACHE = 'tozzi-v4';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
   'img/hop.png', 'img/banner.png', 'img/sleep.png', 'img/cry.png', 'img/neko/neko.png',

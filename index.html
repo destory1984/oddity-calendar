@@ -109,8 +109,8 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
 #bunny .love b{position:absolute;left:3.7%;top:4%;width:94.7%;height:21.6%;display:flex;align-items:center;justify-content:center;
   font:700 19px "Gaegu","Pretendard Variable",sans-serif;color:#b23a48;letter-spacing:.5px;white-space:nowrap;transform:rotate(-1deg)}
 #bunny .cry{position:absolute;left:11px;bottom:0;width:48px;height:52px;object-fit:contain;transform-origin:50% 100%;display:none}
-/* Neko (the classic desktop cat): 24 frames of 32px, drawn at 2x with crisp pixels */
-#bunny .neko{position:absolute;left:3px;bottom:0;width:64px;height:64px;background:url(img/neko/neko.png) 0 0/1536px 64px no-repeat;image-rendering:pixelated;display:none}
+/* Neko (the classic desktop cat): 24 original frames + 16 in-between run frames, 32px each, drawn at 2x with crisp pixels */
+#bunny .neko{position:absolute;left:3px;bottom:0;width:64px;height:64px;background:url(img/neko/neko.png) 0 0/2560px 64px no-repeat;image-rendering:pixelated;display:none}
 #bunny.nk>*{display:none!important}
 #bunny.nk>.neko{display:block!important}
 #bunny.zz .run,#bunny.luv .run,#bunny.cry .run{display:none}
@@ -1005,15 +1005,17 @@ const musicBox = (() => {
   // where the bunny would cry, the cat scratches the floor in a huff. No banner or song for the cat.
   const NK = {awake:0,up1:1,up2:2,down1:3,down2:4,left1:5,left2:6,right1:7,right2:8,upleft1:9,upleft2:10,upright1:11,upright2:12,
     downleft1:13,downleft2:14,downright1:15,downright2:16,sleep1:17,sleep2:18,yawn1:19,yawn2:20,wash1:21,scratch1:22,scratch2:23};
+  // in-between run frames drawn for this app (A: between 1 and 2, B: between 2 and 1), stored after the originals
+  ['up','upright','right','downright','down','downleft','left','upleft'].forEach((d, k) => { NK[d + 'A'] = 24 + 2 * k; NK[d + 'B'] = 25 + 2 * k; });
   const nekoEl = el.querySelector('.neko');
   let nekoHead = 'down', catRest = 0;
   function drawNeko(now, vx, vy, going){
     if (musicBox && el.classList.contains('luv')) musicBox.pause();
     el.classList.remove('luv', 'zz', 'cry');
     const two = ((now / 220) | 0) % 2 + 1;   // idle animations: swap the frame pair about 4.5 times a second
-    // running: the original art has 2 frames per direction; play them as 4 beats (1, 1 lifted, 2, 2 lifted)
-    const beat = ((now / 110) | 0) % 4, runFrame = beat < 2 ? 1 : 2, bob = beat % 2 ? -2 : 0;
-    let f, lift = 0;
+    // running: 4 frames per direction (1, A, 2, B)
+    const runFrame = ['1', 'A', '2', 'B'][((now / 120) | 0) % 4];
+    let f;
     if (cryingSince) f = 'scratch' + two;
     else if (going){
       catRest = now;
@@ -1021,13 +1023,13 @@ const musicBox = (() => {
         const a = Math.atan2(vy, vx) * 180 / Math.PI;   // 0 = right, 90 = down
         nekoHead = ['right','downright','down','downleft','left','upleft','up','upright'][((Math.round(a / 45) % 8) + 8) % 8];
       }
-      f = nekoHead + runFrame; lift = bob;
+      f = nekoHead + runFrame;
     } else {
       const rest = now - catRest;
       f = rest < 1500 ? 'awake' : rest < 3500 ? 'wash1' : rest < 5000 ? 'yawn' + two : 'sleep' + (((now / 700) | 0) % 2 + 1);
     }
     nekoEl.style.backgroundPositionX = -NK[f] * 64 + 'px';
-    el.style.transform = `translate(${x - W/2}px, ${y - H + lift}px)`;   // the cat has its own left/right frames: never mirrored
+    el.style.transform = `translate(${x - W/2}px, ${y - H}px)`;   // the cat has its own left/right frames: never mirrored
   }
   let side = -1, lastT = 0;   // side of the cursor it settles on: -1 left, 1 right
   let goal = [0, 0], goalKey = '';   // picked once per cursor position, so it doesn't drift as the animal moves
