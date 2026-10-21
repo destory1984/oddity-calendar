@@ -149,7 +149,6 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
     <button class="create" id="createBtn">＋ 만들기</button>
     <div class="mini-head"><b id="miniTitle"></b><span><button class="icon" id="mPrev">‹</button><button class="icon" id="mNext">›</button></span></div>
     <div class="mini" id="mini"></div>
-    <h4>내 캘린더</h4><div id="myCals"></div>
     <h4 id="gHead" hidden>구글 캘린더</h4><div id="gCals"></div>
     <h4 id="otherHead">다른 캘린더</h4><div id="otherCals"></div>
   </aside>
@@ -172,9 +171,6 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
 <script>
 // ---------- data ----------
 const CALS = [
-  {id:'me',    name:'내 일정', color:'#7986cb', group:'my'},
-  {id:'family',name:'가족',    color:'#8e7cc3', group:'my'},
-  {id:'stock', name:'주식',    color:'#33b679', group:'my'},
   {id:'krhol', name:'대한민국의 휴일', color:'#c0392b', group:'other', readonly:true},
   {id:'ushol', name:'미국의 휴일',     color:'#4285f4', group:'other', readonly:true},
 ];
@@ -185,10 +181,10 @@ const store = {
   get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},
   set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
 };
-let events = store.get('cal.events', null) || [
-];
+// events live only in Google Calendar; nothing personal is stored in this page or the browser
+try { localStorage.removeItem('cal.events'); } catch {}   // left over from the old local calendars
 let hidden = new Set(store.get('cal.hidden', []));
-const save = () => { store.set('cal.events', events); store.set('cal.hidden', [...hidden]); };
+const save = () => { store.set('cal.hidden', [...hidden]); };
 
 // ---------- date helpers ----------
 const pad = n => String(n).padStart(2,'0');
@@ -202,7 +198,7 @@ let view = store.get('cal.view', 'month');
 let query = '';
 
 function allEvents(){
-  const list = [...events, ...gEvents].map(e=>({...e}));
+  const list = gEvents.map(e=>({...e}));
   // built-in holidays only until Google is connected (Google has its own holiday calendars)
   if (!gToken) for (const [d,t] of Object.entries(KR)) list.push({id:'kr'+d,cal:'krhol',title:t,start:d,end:d,allDay:true});
   if (!gToken) for (const [d,t] of Object.entries(US)) list.push({id:'us'+d,cal:'ushol',title:t,start:d,end:d,allDay:true});
@@ -401,8 +397,8 @@ function renderSide(){
   }
   document.getElementById('gHead').hidden = !CALS.some(c=>c.group==='google');
   document.getElementById('otherHead').hidden = document.getElementById('otherCals').hidden = !!gToken;
-  for (const g of ['my','google','other']){
-    const box = document.getElementById({my:'myCals',google:'gCals',other:'otherCals'}[g]);
+  for (const g of ['google','other']){
+    const box = document.getElementById({google:'gCals',other:'otherCals'}[g]);
     box.innerHTML='';
     for (const c of CALS.filter(c=>c.group===g)){
       const on = !hidden.has(c.id), it = document.createElement('div'); it.className='cal-item';
@@ -534,23 +530,17 @@ function toG(r){
   return {summary:r.title, start:{dateTime:s.toISOString(), timeZone:tz}, end:{dateTime:en.toISOString(), timeZone:tz}};
 }
 
-// save to wherever rec.cal lives; moving between local and Google = create there + delete here
+// save to the chosen Google calendar; moving to another calendar = create there + delete here
 async function saveEvent(old, rec){
-  if (isG(rec.cal)){
-    const body = JSON.stringify(toG({...rec, dur:old.dur}));
-    const same = old.gid && old.cal === rec.cal;
-    const it = await gFetch(gPath(rec.cal, same ? old.gid : ''), {method: same ? 'PATCH' : 'POST', body});
-    if (old.id && !same) await removeEvent(old);
-    gEvents = gEvents.filter(x => x.id !== old.id).concat(fromG(it, rec.cal));
-  } else {
-    if (old.gid){ await removeEvent(old); rec.id = Date.now(); }
-    events = old.id && !old.gid ? events.map(x => x.id === old.id ? rec : x) : [...events, rec];
-    save();
-  }
+  const body = JSON.stringify(toG({...rec, dur:old.dur}));
+  const same = old.gid && old.cal === rec.cal;
+  const it = await gFetch(gPath(rec.cal, same ? old.gid : ''), {method: same ? 'PATCH' : 'POST', body});
+  if (old.gid && !same) await removeEvent(old);
+  gEvents = gEvents.filter(x => x.id !== old.id).concat(fromG(it, rec.cal));
 }
 async function removeEvent(e){
-  if (e.gid){ await gFetch(gPath(e.cal, e.gid), {method:'DELETE'}); gEvents = gEvents.filter(x => x.id !== e.id); }
-  else { events = events.filter(x => x.id !== e.id); save(); }
+  await gFetch(gPath(e.cal, e.gid), {method:'DELETE'});
+  gEvents = gEvents.filter(x => x.id !== e.id);
 }
 
 // ---------- modals ----------
@@ -587,9 +577,13 @@ function showDay(d){
   bg.classList.add('on');
 }
 
-function openEditor(e){
+async function openEditor(e){
   const isNew = !e.id;
   const own = CALS.filter(c=>!c.readonly);
+  if (!own.length){   // nowhere to save until a Google calendar is linked
+    if (await askConfirm('일정은 구글 캘린더에 저장됩니다. 구글에 연결할까요?', '구글 연결')) gConnect();
+    return;
+  }
   modal.innerHTML = `<h3>${isNew?'새 일정':'일정 수정'}</h3>
     <label>제목</label><input id="fTitle" value="${esc(e.title||'')}" placeholder="제목 추가">
     <div class="row"><div><label>시작</label><input type="date" id="fStart" value="${e.start}"></div>
