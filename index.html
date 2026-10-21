@@ -935,17 +935,26 @@ const musicBox = (() => {
   const scan = () => { walls = [...document.querySelectorAll('.ev,.tev,.more')]
     .map(el => el.getBoundingClientRect()).filter(r => r.width && r.height); };
   setInterval(scan, 300); scan();
-  // does the bunny's box (px = centre, py = feet) touch an event?
+  // does the animal's body touch an event? Only the feet and lower body count (px = centre, py = feet),
+  // so it can slip through the gaps between event rows; ears may overlap a bar above.
+  const BW = 40, BH = 36;
   const blocked = (px, py) => walls.some(r =>
-    px + W/2 > r.left - PAD && px - W/2 < r.right + PAD && py > r.top - PAD && py - H < r.bottom + PAD);
-  // nearest free spot around (tx, ty): rings of growing radius, 16 directions each
+    px + BW/2 > r.left - PAD && px - BW/2 < r.right + PAD && py > r.top - PAD && py - BH < r.bottom + PAD);
+  // clear straight line between two points?
+  const clear = (ax, ay, bx, by) => {
+    const n = Math.ceil(Math.hypot(bx - ax, by - ay) / 8);
+    for (let i = 1; i <= n; i++) if (blocked(ax + (bx - ax) * i / n, ay + (by - ay) * i / n)) return false;
+    return true;
+  };
+  // nearest free spot around (tx, ty): rings of growing radius; within a ring, the side nearest the animal first
   const freeSpot = (tx, ty) => {
     if (!blocked(tx, ty)) return [tx, ty];
-    for (let rad = 16; rad <= 240; rad += 16)
-      for (let k = 0; k < 16; k++){
-        const a = k / 16 * 2 * Math.PI, px = tx + Math.cos(a) * rad, py = ty + Math.sin(a) * rad;
-        if (!blocked(px, py)) return [px, py];
-      }
+    for (let rad = 12; rad <= 240; rad += 12){
+      const ring = [];
+      for (let k = 0; k < 16; k++){ const a = k / 16 * 2 * Math.PI; ring.push([tx + Math.cos(a) * rad, ty + Math.sin(a) * rad]); }
+      ring.sort((p, q) => Math.hypot(p[0] - x, p[1] - y) - Math.hypot(q[0] - x, q[1] - y));
+      for (const [px, py] of ring) if (!blocked(px, py)) return [px, py];
+    }
     return [tx, ty];
   };
   // push out of an event it is somehow inside (after a jump, or the calendar re-drew under it)
@@ -1001,8 +1010,10 @@ const musicBox = (() => {
   function drawNeko(now, vx, vy, going){
     if (musicBox && el.classList.contains('luv')) musicBox.pause();
     el.classList.remove('luv', 'zz', 'cry');
-    const two = ((now / 220) | 0) % 2 + 1;   // swap the frame pair about 4.5 times a second
-    let f;
+    const two = ((now / 220) | 0) % 2 + 1;   // idle animations: swap the frame pair about 4.5 times a second
+    // running: the original art has 2 frames per direction; play them as 4 beats (1, 1 lifted, 2, 2 lifted)
+    const beat = ((now / 110) | 0) % 4, runFrame = beat < 2 ? 1 : 2, bob = beat % 2 ? -2 : 0;
+    let f, lift = 0;
     if (cryingSince) f = 'scratch' + two;
     else if (going){
       catRest = now;
@@ -1010,19 +1021,26 @@ const musicBox = (() => {
         const a = Math.atan2(vy, vx) * 180 / Math.PI;   // 0 = right, 90 = down
         nekoHead = ['right','downright','down','downleft','left','upleft','up','upright'][((Math.round(a / 45) % 8) + 8) % 8];
       }
-      f = nekoHead + two;
+      f = nekoHead + runFrame; lift = bob;
     } else {
       const rest = now - catRest;
       f = rest < 1500 ? 'awake' : rest < 3500 ? 'wash1' : rest < 5000 ? 'yawn' + two : 'sleep' + (((now / 700) | 0) % 2 + 1);
     }
     nekoEl.style.backgroundPositionX = -NK[f] * 64 + 'px';
-    el.style.transform = `translate(${x - W/2}px, ${y - H}px)`;   // the cat has its own left/right frames: never mirrored
+    el.style.transform = `translate(${x - W/2}px, ${y - H + lift}px)`;   // the cat has its own left/right frames: never mirrored
   }
+  let side = -1, lastT = 0;   // side of the cursor it settles on: -1 left, 1 right
+  let goal = [0, 0], goalKey = '';   // picked once per cursor position, so it doesn't drift as the animal moves
   (function tick(now){
     now ??= performance.now();
+    const dt = Math.min(0.05, (now - (lastT || now)) / 1000); lastT = now;   // seconds since last frame (capped after a stall)
     if (!enabled) return requestAnimationFrame(tick);
-    // goal: a little behind and below the cursor (never covering what you click), moved to free space if an event is there
-    const [tx, ty] = freeSpot(mx - 52 * dir, my + 6);
+    // goal: beside the cursor on the side the animal is already on (so it never runs round it),
+    // a little low so it doesn't cover what you click; moved to free space if an event is there
+    if (Math.abs(x - mx) > 50) side = x < mx ? -1 : 1;
+    const gk = `${side},${mx | 0},${my | 0},${walls.length}`;
+    if (gk !== goalKey){ goal = freeSpot(mx + side * 40, my + 6); goalKey = gk; }
+    const [tx, ty] = goal;
     const dx = tx - x, dy = ty - y, dist = Math.hypot(dx, dy);
     const ox = x, oy = y;
     if (cryingSince){
@@ -1031,14 +1049,18 @@ const musicBox = (() => {
       if (now - cryingSince > CRY_MIN && movedOn){ cryingSince = 0; spot = [x, y]; spotSince = now; stillSince = now; }
     }
     if (!cryingSince && dist > 2){
-      // leisurely pace, a bit faster when far behind, easing in over the last 30px
-      const pace = store.get('cal.char', 'bunny') === 'neko' ? 2 : 1;   // the cat runs twice as fast as the bunny
-      const step = Math.min(dist, pace * (0.025 + dist * 0.0004375) * Math.min(1, 0.35 + dist / 45));
+      // steady pace (bunny 20px/s, cat twice that), easing down over the last 30px but never below 12px/s
+      const pace = store.get('cal.char', 'bunny') === 'neko' ? 2 : 1;
+      const step = Math.min(dist, dt * Math.max(12, pace * 20 * Math.min(1, dist / 30)));
       {
         // re-plan when the goal moves to another cell, or twice a second (events may have moved)
         const key = ((tx / G) | 0) + ',' + ((ty / G) | 0);
         if (key !== routeGoal || now - routeAt > 500){ route = plan(tx, ty) || []; routeGoal = key; routeAt = now; }
         while (route.length > 1 && Math.hypot(route[0][0] - x, route[0][1] - y) < G * 0.75) route.shift();
+        // head straight for the farthest point of the route it can see (smooth lines instead of grid steps)
+        let k = 0;
+        for (let i = route.length - 1; i > 0; i--) if (clear(x, y, route[i][0], route[i][1])){ k = i; break; }
+        if (k) route.splice(0, k);
         // no way through: stay put until the cursor moves somewhere reachable
         if (route.length){
           const [wx, wy] = route[0];
@@ -1046,9 +1068,10 @@ const musicBox = (() => {
           x += (wx - x) / wd * Math.min(step, wd); y += (wy - y) / wd * Math.min(step, wd);
         }
       }
-      // turn around only when the cursor is clearly on the other side (no flip-flopping)
-      if (Math.abs(mx - x) > 60) dir = mx > x ? 1 : -1;
+      // face where it's going; once there, face the cursor
+      if (Math.abs(x - ox) > 0.05) dir = x > ox ? 1 : -1;
     }
+    if (dist <= 2) dir = mx > x ? 1 : -1;
     unstick();
     // "moving" = it actually got somewhere, so a bunny stuck against an event can still nod off
     const moving = Math.hypot(x - ox, y - oy) > 0.15;

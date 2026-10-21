@@ -67,3 +67,18 @@ python -m http.server 8765
 왼쪽 "보기"에서 "토끼 대신 고양이(Neko)"를 켜면 토끼 대신 고양이가 마우스를 쫓는다. 가는 방향(8방향)에 맞는 그림으로 달리고, 닿으면 앉았다가 몸을 핥고 하품한 뒤 잠든다. 같은 자리에서 10초 동안 맴돌면 바닥을 긁는다. 현수막과 노래는 토끼만 한다.
 
 고양이 그림 24장(`img/neko/neko.png`, 32px)은 [crgimenes/neko](https://github.com/crgimenes/neko) 의 `sprites/` 에서 가져와 한 장으로 이어 붙였다. 그 저장소는 BSD 2-Clause 라이선스(`img/neko/LICENSE.txt`)이며, 그림은 1989년 원조 Neko 프로그램의 것이다.
+
+## 라이선스
+
+이 저장소의 코드(`index.html`, `sw.js`, `manifest.webmanifest`)는 MIT 라이선스다(`LICENSE`).
+
+함께 들어 있는 남의 것과 그 라이선스는 아래와 같다.
+
+| 무엇 | 출처 | 라이선스 |
+|---|---|---|
+| 고양이 그림 `img/neko/neko.png` | [crgimenes/neko](https://github.com/crgimenes/neko) (원조 Neko, 1989) | BSD 2-Clause (`img/neko/LICENSE.txt`) |
+| 소리 아이콘 `img/ui/icon-sound-*.svg` | 같은 사람의 oddity 프로젝트 | MIT |
+| 본문 글꼴 Pretendard | [orioncactus/pretendard](https://github.com/orioncactus/pretendard), CDN 으로 불러옴 | SIL OFL 1.1 |
+| 제목 글꼴 Single Day, 현수막 글꼴 Gaegu | Google Fonts, 링크로 불러옴 | SIL OFL 1.1 |
+| 토끼 그림 `img/*.png`, 앱 아이콘 `img/app/` | ChatGPT 이미지 생성으로 이 저장소를 위해 만듦 | 이 저장소와 같이 MIT |
+| 노래 「Somewhere over the Rainbow」 | 권리자(Mountain Apple Company)의 공식 유튜브 영상을 끼워 넣어 틂. 음원은 저장소에 없다 | 유튜브 이용약관 |
