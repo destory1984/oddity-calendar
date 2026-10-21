@@ -1133,8 +1133,8 @@ const musicBox = (() => {
     if (cat){ drawNeko(now, x - ox, y - oy, moving || trying); return requestAnimationFrame(tick); }
     const idle = now - stillSince, asleep = idle > SLEEP_AFTER, loving = idle > LOVE_AFTER && !asleep;
     el.classList.toggle('zz', asleep);
-    if (loving && !el.classList.contains('luv')) musicBox.play();   // banner goes up
-    if (moving && el.classList.contains('luv')) musicBox.pause();   // off running again
+    if (loving && !el.classList.contains('luv')) musicBox.play();    // banner goes up
+    if (!loving && el.classList.contains('luv')) musicBox.pause();   // banner comes down (running, crying, switched off): song stops
     el.classList.toggle('luv', loving);
     let lift = 0, tilt = 0;
     if (cryingSince){
