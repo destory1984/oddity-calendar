@@ -254,6 +254,14 @@ function allEvents(){
   for (const [d,t] of Object.entries(US)) list.push({id:'us'+d,cal:'ushol',title:t,start:d,end:d,allDay:true});
   return list.filter(e=>!hidden.has(e.cal) && (!query || e.title.toLowerCase().includes(query)));
 }
+// readable text on a coloured chip: dark text on light colours (e.g. Google's pale teal), white on dark ones
+function inkOn(color){
+  const m = /^#?([0-9a-f]{6})$/i.exec(color || '');
+  if (!m) return '#fff';
+  const n = parseInt(m[1], 16), lin = v => (v /= 255) <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4;
+  const L = .2126 * lin(n >> 16) + .7152 * lin(n >> 8 & 255) + .0722 * lin(n & 255);
+  return L > .3 ? '#1f1f1f' : '#fff';
+}
 const calOf = id => CALS.find(c=>c.id===id) || CALS[0];
 const isBar = e => e.allDay || e.start !== e.end;
 
@@ -395,7 +403,7 @@ function renderTime(){
     }
     for (const p of placed){
       const c = calOf(p.e.cal), el = document.createElement('div');
-      el.className = 'tev'; el.style.background = c.color;
+      el.className = 'tev'; el.style.background = c.color; el.style.color = inkOn(c.color);
       el.style.top = (p.s/60*HOUR_PX) + 'px'; el.style.height = (HOUR_PX-2) + 'px';
       el.style.left = (p.k/ends.length*100) + '%'; el.style.width = `calc(${100/ends.length}% - 4px)`;
       el.innerHTML = '<b></b><span></span>';
@@ -419,7 +427,7 @@ function evEl(e, s, en, gridRow){
   if (e.color) c.color = e.color;
   el.dataset.s = s; el.dataset.en = en;
   if (isBar(e)){
-    el.className='ev bar'; el.style.background=c.color;
+    el.className='ev bar'; el.style.background=c.color; el.style.color=inkOn(c.color);
     el.textContent = (e.time?e.time+' ':'') + e.title;
   } else {
     el.className='ev dot';
@@ -452,7 +460,7 @@ function renderSide(){
     box.innerHTML='';
     for (const c of CALS.filter(c=>c.group===g)){
       const on = !hidden.has(c.id), it = document.createElement('div'); it.className='cal-item';
-      it.innerHTML = `<span class="box" style="border-color:${c.color};background:${on?c.color:'transparent'}">${on?'✓':''}</span>${c.name}`;
+      it.innerHTML = `<span class="box" style="border-color:${c.color};background:${on?c.color:'transparent'};color:${inkOn(c.color)}">${on?'✓':''}</span>${c.name}`;
       it.onclick = () => { on ? hidden.add(c.id) : hidden.delete(c.id); save(); render(); };
       box.appendChild(it);
     }
