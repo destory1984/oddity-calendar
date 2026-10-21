@@ -1091,8 +1091,8 @@ const musicBox = (() => {
         nekoHead = ['right','downright','down','downleft','left','upleft','up','upright'][((Math.round(a / 45) % 8) + 8) % 8];
       }
       f = nekoHead + runFrame;
-      // one step sound per run cycle (on frame 1, every 480ms), only while it is really moving
-      if (runFrame !== lastRunFrame && runFrame === '1' && Math.hypot(vx, vy) > 0.15) musicBox.step();
+      // "ta-dat" once per run cycle (on frame 1, every 480ms): two quick paws 90ms apart, only while it is really moving
+      if (runFrame !== lastRunFrame && runFrame === '1' && Math.hypot(vx, vy) > 0.15){ musicBox.step(); setTimeout(musicBox.step, 90); }
       lastRunFrame = runFrame;
     } else {
       const rest = now - catRest;
