@@ -130,6 +130,7 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
 #bunnyBtn{display:grid;place-items:center;position:relative}
 /* icon = first frame of the hop sprite */
 #bunnyBtn::before{content:"";width:26px;height:26px;background:url(img/hop.png) -2.1px -7.5px/121.4px auto no-repeat}
+#bunnyBtn.cat::before{background:url(img/neko/neko.png) 0 0/1280px 32px no-repeat;width:32px;height:32px;image-rendering:pixelated}
 #bunnyBtn.off{opacity:.45}
 #bunnyBtn.off::after{content:"";position:absolute;width:24px;height:2px;background:#eef3ff;transform:rotate(-40deg);border-radius:1px}
 #soundBtn{display:grid;place-items:center}
@@ -496,13 +497,6 @@ function renderSide(){
     }
   }
   const vo = document.getElementById('viewOpts'); vo.innerHTML = '';
-  {
-    const isCat = store.get('cal.char', 'bunny') === 'neko';
-    const it = document.createElement('div'); it.className = 'cal-item';
-    it.innerHTML = `<span class="box" style="border-color:#9aa0a6;background:${isCat ? '#9aa0a6' : 'transparent'};color:#1f1f1f">${isCat ? '✓' : ''}</span>토끼 대신 고양이(Neko)`;
-    it.onclick = () => { store.set('cal.char', isCat ? 'bunny' : 'neko'); renderSide(); };
-    vo.appendChild(it);
-  }
   if (DANGI){
     const it = document.createElement('div'); it.className = 'cal-item';
     it.innerHTML = `<span class="box" style="border-color:#9aa0a6;background:${showLunar ? '#9aa0a6' : 'transparent'};color:#1f1f1f">${showLunar ? '✓' : ''}</span>음력 날짜`;
@@ -994,9 +988,17 @@ const musicBox = (() => {
   // on/off button (remembered); off hides the bunny and stops its song
   let enabled = store.get('cal.bunny', true);
   const bBtn = document.getElementById('bunnyBtn');
-  const showBtn = () => { bBtn.classList.toggle('off', !enabled); bBtn.title = enabled ? '토끼 끄기' : '토끼 켜기'; el.style.display = enabled ? '' : 'none'; };
+  // one button cycles bunny -> cat -> off -> bunny; the icon shows the animal (or the bunny crossed out)
+  const isCat = () => store.get('cal.char', 'bunny') === 'neko';
+  const showBtn = () => {
+    bBtn.classList.toggle('off', !enabled); bBtn.classList.toggle('cat', enabled && isCat());
+    bBtn.title = !enabled ? '토끼 켜기' : isCat() ? '끄기' : '고양이로 바꾸기';
+    el.style.display = enabled ? '' : 'none';
+  };
   bBtn.onclick = () => {
-    enabled = !enabled; store.set('cal.bunny', enabled); showBtn();
+    if (enabled && !isCat()){ store.set('cal.char', 'neko'); showBtn(); return; }   // bunny -> cat
+    if (!enabled) store.set('cal.char', 'bunny');                                  // off -> bunny
+    enabled = !enabled; store.set('cal.bunny', enabled); showBtn();               // cat -> off, off -> bunny
     // when switched back on, it sets off from the middle of the screen
     if (!enabled){ musicBox.pause(); el.className = ''; } else { x = innerWidth / 2; y = innerHeight / 2; stillSince = performance.now(); }
   };
