@@ -109,6 +109,10 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
 #bunny .love b{position:absolute;left:3.7%;top:4%;width:94.7%;height:21.6%;display:flex;align-items:center;justify-content:center;
   font:700 19px "Gaegu","Pretendard Variable",sans-serif;color:#b23a48;letter-spacing:.5px;white-space:nowrap;transform:rotate(-1deg)}
 #bunny .cry{position:absolute;left:11px;bottom:0;width:48px;height:52px;object-fit:contain;transform-origin:50% 100%;display:none}
+/* Neko (the classic desktop cat): 24 frames of 32px, drawn at 2x with crisp pixels */
+#bunny .neko{position:absolute;left:3px;bottom:0;width:64px;height:64px;background:url(img/neko/neko.png) 0 0/1536px 64px no-repeat;image-rendering:pixelated;display:none}
+#bunny.nk>*{display:none!important}
+#bunny.nk>.neko{display:block!important}
 #bunny.zz .run,#bunny.luv .run,#bunny.cry .run{display:none}
 #bunny.zz .sleep,#bunny.luv .love,#bunny.cry img.cry{display:block}
 @media (prefers-reduced-motion:reduce){#bunny{display:none}}
@@ -220,7 +224,7 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
   </main>
 </div>
 
-<div id="bunny" aria-hidden="true"><div class="run"></div><img class="sleep" src="img/sleep.png" alt=""><img class="cry" src="img/cry.png" alt=""><div class="love"><img src="img/banner.png" alt=""><b>결혼 26주년 축하</b></div><span class="note">♥</span><span class="note">♥</span><span class="note">♥</span><span class="note">♥</span></div>
+<div id="bunny" aria-hidden="true"><div class="run"></div><img class="sleep" src="img/sleep.png" alt=""><img class="cry" src="img/cry.png" alt=""><div class="neko"></div><div class="love"><img src="img/banner.png" alt=""><b>결혼 26주년 축하</b></div><span class="note">♥</span><span class="note">♥</span><span class="note">♥</span><span class="note">♥</span></div>
 
 <div id="songBox"><div id="songPlayer"></div></div>
 
@@ -492,6 +496,13 @@ function renderSide(){
     }
   }
   const vo = document.getElementById('viewOpts'); vo.innerHTML = '';
+  {
+    const isCat = store.get('cal.char', 'bunny') === 'neko';
+    const it = document.createElement('div'); it.className = 'cal-item';
+    it.innerHTML = `<span class="box" style="border-color:#9aa0a6;background:${isCat ? '#9aa0a6' : 'transparent'};color:#1f1f1f">${isCat ? '✓' : ''}</span>토끼 대신 고양이(Neko)`;
+    it.onclick = () => { store.set('cal.char', isCat ? 'bunny' : 'neko'); renderSide(); };
+    vo.appendChild(it);
+  }
   if (DANGI){
     const it = document.createElement('div'); it.className = 'cal-item';
     it.innerHTML = `<span class="box" style="border-color:#9aa0a6;background:${showLunar ? '#9aa0a6' : 'transparent'};color:#1f1f1f">${showLunar ? '✓' : ''}</span>음력 날짜`;
@@ -981,6 +992,32 @@ const musicBox = (() => {
     if (!enabled){ musicBox.pause(); el.className = ''; } else { x = innerWidth / 2; y = innerHeight / 2; stillSince = performance.now(); }
   };
   showBtn();
+  // Neko: run with the frame pair for its heading (8 directions); at rest sit, wash, yawn, then sleep;
+  // where the bunny would cry, the cat scratches the floor in a huff. No banner or song for the cat.
+  const NK = {awake:0,up1:1,up2:2,down1:3,down2:4,left1:5,left2:6,right1:7,right2:8,upleft1:9,upleft2:10,upright1:11,upright2:12,
+    downleft1:13,downleft2:14,downright1:15,downright2:16,sleep1:17,sleep2:18,yawn1:19,yawn2:20,wash1:21,scratch1:22,scratch2:23};
+  const nekoEl = el.querySelector('.neko');
+  let nekoHead = 'down', catRest = 0;
+  function drawNeko(now, vx, vy, going){
+    if (musicBox && el.classList.contains('luv')) musicBox.pause();
+    el.classList.remove('luv', 'zz', 'cry');
+    const two = ((now / 220) | 0) % 2 + 1;   // swap the frame pair about 4.5 times a second
+    let f;
+    if (cryingSince) f = 'scratch' + two;
+    else if (going){
+      catRest = now;
+      if (Math.hypot(vx, vy) > 0.05){
+        const a = Math.atan2(vy, vx) * 180 / Math.PI;   // 0 = right, 90 = down
+        nekoHead = ['right','downright','down','downleft','left','upleft','up','upright'][((Math.round(a / 45) % 8) + 8) % 8];
+      }
+      f = nekoHead + two;
+    } else {
+      const rest = now - catRest;
+      f = rest < 1500 ? 'awake' : rest < 3500 ? 'wash1' : rest < 5000 ? 'yawn' + two : 'sleep' + (((now / 700) | 0) % 2 + 1);
+    }
+    nekoEl.style.backgroundPositionX = -NK[f] * 64 + 'px';
+    el.style.transform = `translate(${x - W/2}px, ${y - H}px)`;   // the cat has its own left/right frames: never mirrored
+  }
   (function tick(now){
     now ??= performance.now();
     if (!enabled) return requestAnimationFrame(tick);
@@ -1024,6 +1061,9 @@ const musicBox = (() => {
     if (cryingSince) stillSince = now;   // no banner while crying
     else if (phase % (2 * Math.PI) > 0.2) phase += 0.03;   // finish the hop in progress, then land
     // when it stops: first holds up a heart ("I love you"), then dozes off
+    const cat = store.get('cal.char', 'bunny') === 'neko';
+    el.classList.toggle('nk', cat);
+    if (cat){ drawNeko(now, x - ox, y - oy, moving || trying); return requestAnimationFrame(tick); }
     const idle = now - stillSince, asleep = idle > SLEEP_AFTER, loving = idle > LOVE_AFTER && !asleep;
     el.classList.toggle('zz', asleep);
     if (loving && !el.classList.contains('luv')) musicBox.play();   // banner goes up
