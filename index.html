@@ -1032,7 +1032,8 @@ const musicBox = (() => {
     }
     if (!cryingSince && dist > 2){
       // leisurely pace, a bit faster when far behind, easing in over the last 30px
-      const step = Math.min(dist, (0.025 + dist * 0.0004375) * Math.min(1, 0.35 + dist / 45));
+      const pace = store.get('cal.char', 'bunny') === 'neko' ? 2 : 1;   // the cat runs twice as fast as the bunny
+      const step = Math.min(dist, pace * (0.025 + dist * 0.0004375) * Math.min(1, 0.35 + dist / 45));
       {
         // re-plan when the goal moves to another cell, or twice a second (events may have moved)
         const key = ((tx / G) | 0) + ',' + ((ty / G) | 0);
