@@ -187,10 +187,24 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
 #eDel{margin-top:16px}
 @media (max-width:900px){.ed-when{margin-left:0}}
 @media (max-width:760px){
-  .app{grid-template-columns:1fr}
-  aside,.logo span,#search{display:none}
+  html,body{overflow-x:hidden}
+  .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);width:100vw}
+  aside,.logo span,#search,#gStatus{display:none}
+  /* header on two lines: date and paging on top, the toggles below */
+  header{flex-wrap:wrap;gap:6px 8px;padding:8px 10px;white-space:normal}
+  header .spacer{flex-basis:100%;height:0}
   .logo{width:auto}
-  main{margin:0 4px}
+  .title{font-size:18px;margin-left:2px;flex:1;white-space:nowrap}
+  .pill{padding:6px 14px}
+  .icon{width:34px;height:34px}
+  #gBtn{height:34px;padding:0 12px}
+  #gBtn.g-off span,#gBtn.g-on .t1,#gBtn.g-on .t2{display:none}   /* just the G logo / the green dot */
+  #gBtn.g-on:hover .t2{display:none}
+  #view{padding:6px 10px}
+  main{margin:0 4px;min-width:0}
+  .dow,.week{min-width:0}
+  .dnum em{min-width:20px;padding:0 3px}
+  .lunar{display:none}
   .ev{font-size:11px;padding:0 3px;margin:0 1px}
 }
 </style>
