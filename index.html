@@ -1091,8 +1091,8 @@ const musicBox = (() => {
         nekoHead = ['right','downright','down','downleft','left','upleft','up','upright'][((Math.round(a / 45) % 8) + 8) % 8];
       }
       f = nekoHead + runFrame;
-      // a step sound on every run frame (every 120ms), only while it is really moving
-      if (runFrame !== lastRunFrame && Math.hypot(vx, vy) > 0.15) musicBox.step();
+      // one step sound per run cycle (on frame 1, every 480ms), only while it is really moving
+      if (runFrame !== lastRunFrame && runFrame === '1' && Math.hypot(vx, vy) > 0.15) musicBox.step();
       lastRunFrame = runFrame;
     } else {
       const rest = now - catRest;
