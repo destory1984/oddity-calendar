@@ -957,7 +957,25 @@ const musicBox = (() => {
       t += len;
     }
   }
-  return {play, pause};
+  // the cat's paws: a soft brush of filtered noise per step (sabujak-sabujak), quiet and a little random
+  let noise = null;
+  function step(){
+    if (!on || !ctx || ctx.state !== 'running') return;
+    if (!noise){
+      noise = ctx.createBuffer(1, ctx.sampleRate * .12, ctx.sampleRate);
+      const d = noise.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const t = ctx.currentTime, src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    src.buffer = noise;
+    f.type = 'bandpass'; f.frequency.value = 2500 + Math.random() * 1500; f.Q.value = 1.2;
+    const vol = .05 + Math.random() * .03;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + .015);
+    g.gain.exponentialRampToValueAtTime(.0001, t + .09);
+    src.connect(f).connect(g).connect(ctx.destination); src.start(t); src.stop(t + .12);
+  }
+  return {play, pause, step};
 })();
 
 // ---------- bunny that hops after the mouse ----------
@@ -1057,6 +1075,7 @@ const musicBox = (() => {
   ['up','upright','right','downright','down','downleft','left','upleft'].forEach((d, k) => { NK[d + 'A'] = 24 + 2 * k; NK[d + 'B'] = 25 + 2 * k; });
   const nekoEl = el.querySelector('.neko');
   let nekoHead = 'down', catRest = 0;
+  let lastRunFrame = '';
   function drawNeko(now, vx, vy, going){
     if (musicBox && el.classList.contains('luv')) musicBox.pause();
     el.classList.remove('luv', 'zz', 'cry');
@@ -1072,6 +1091,9 @@ const musicBox = (() => {
         nekoHead = ['right','downright','down','downleft','left','upleft','up','upright'][((Math.round(a / 45) % 8) + 8) % 8];
       }
       f = nekoHead + runFrame;
+      // a paw lands on frames 1 and 2, only while it is really moving
+      if (runFrame !== lastRunFrame && (runFrame === '1' || runFrame === '2') && Math.hypot(vx, vy) > 0.15) musicBox.step();
+      lastRunFrame = runFrame;
     } else {
       const rest = now - catRest;
       f = rest < 1500 ? 'awake' : rest < 3500 ? 'wash1' : rest < 5000 ? 'yawn' + two : 'sleep' + (((now / 700) | 0) % 2 + 1);
