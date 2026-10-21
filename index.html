@@ -1142,6 +1142,30 @@ const musicBox = (() => {
     requestAnimationFrame(tick);
   })();
 })();
+// ---------- debug: phone / PC preview (only on localhost) ----------
+// Shows the page again inside a 375x812 frame, so the phone layout (media queries) can be checked on a PC.
+(() => {
+  const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+  if (!local || new URLSearchParams(location.search).has('phone')) return;   // not inside the preview frame itself
+  const btn = document.createElement('button');
+  btn.id = 'devView';
+  btn.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:60;padding:8px 12px;border-radius:18px;background:#2d2e31;color:#e3e3e3;box-shadow:0 2px 8px #000a;font-size:13px';
+  const frame = document.createElement('div');
+  frame.style.cssText = 'position:fixed;inset:0;z-index:55;background:#0b0b0c;display:none;align-items:center;justify-content:center;overflow:auto';
+  frame.innerHTML = '<iframe title="폰 화면 미리보기" style="width:375px;height:812px;max-height:calc(100vh - 24px);border:10px solid #2d2e31;border-radius:36px;background:#1f1f1f;flex:none"></iframe>';
+  const iframe = frame.firstChild;
+  let phone = store.get('cal.devPhone', false);
+  const show = () => {
+    btn.textContent = phone ? '🖥 PC 화면' : '📱 폰 화면';
+    frame.style.display = phone ? 'flex' : 'none';
+    if (phone) iframe.src = location.pathname + '?phone=1';
+    else iframe.removeAttribute('src');
+  };
+  btn.onclick = () => { phone = !phone; store.set('cal.devPhone', phone); show(); };
+  document.body.append(frame, btn);
+  show();
+})();
+
 // installable app (home-screen icon, opens without the browser bar, works offline)
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
