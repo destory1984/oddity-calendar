@@ -32,6 +32,7 @@ header{grid-column:1/3;display:flex;white-space:nowrap;min-width:0;align-items:c
 .icon{width:36px;height:36px;border-radius:50%;font-size:18px}
 .title{font-size:22px;margin-left:8px}
 .spacer{flex:1}
+#title .ts{display:none}
 #search{background:var(--chip);border:1px solid var(--line);color:var(--text);border-radius:20px;padding:8px 14px;width:220px}
 aside{padding:8px 16px;overflow:auto}
 .create{background:#37393b;border-radius:16px;padding:16px 22px;font-size:15px;margin-bottom:20px}
@@ -190,17 +191,21 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
   html,body{overflow-x:hidden}
   .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);width:100vw}
   aside,.logo span,#search,#gStatus{display:none}
-  /* header on two lines: date and paging on top, the toggles below */
-  header{flex-wrap:wrap;gap:6px 8px;padding:8px 10px;white-space:normal}
-  header .spacer{flex-basis:100%;height:0}
-  .logo{width:auto}
-  .title{font-size:18px;margin-left:2px;flex:1;white-space:nowrap}
-  .pill{padding:6px 14px}
-  .icon{width:34px;height:34px}
-  #gBtn{height:34px;padding:0 12px}
+  /* header on one line: short title, small controls */
+  header{gap:4px;padding:8px 6px}
+  .logo b{font-size:13px;padding:1px 4px}
+  .title{font-size:17px;margin:0 2px}
+  #title .tl{display:none}
+  #title .ts{display:inline}
+  .pill{padding:4px 9px;font-size:13px}
+  .icon{width:28px;height:28px;font-size:15px}
+  #bunnyBtn::before{transform:scale(.8)}
+  #soundBtn::before{width:18px;height:18px}
+  #gBtn{height:28px;padding:0 8px}
+  #gBtn svg{width:15px;height:15px}
   #gBtn.g-off span,#gBtn.g-on .t1,#gBtn.g-on .t2{display:none}   /* just the G logo / the green dot */
   #gBtn.g-on:hover .t2{display:none}
-  #view{padding:6px 10px}
+  #view{padding:4px 4px;font-size:13px}
   main{margin:0 4px;min-width:0}
   .dow,.week{min-width:0}
   .dnum em{min-width:20px;padding:0 3px}
@@ -313,6 +318,13 @@ const isBar = e => e.allDay || e.start !== e.end;
 
 // ---------- month view ----------
 const LANE_PX = 25;   // 22px row + 3px gap (see .week)
+// title: long form on a PC, short form (YY.MM, or MM.DD in day view) on a phone
+const yymm = d => `${String(d.getFullYear()).slice(2)}.${pad(d.getMonth()+1)}`;
+function setTitle(long, short){
+  document.getElementById('title').innerHTML = '<span class="tl"></span><span class="ts"></span>';
+  document.querySelector('#title .tl').textContent = long;
+  document.querySelector('#title .ts').textContent = short;
+}
 function render(){
   document.getElementById('logoDay').textContent = today.getDate();
   document.getElementById('view').value = view;
@@ -323,7 +335,7 @@ function render(){
   gSync().catch(gErr);
   if (!isMonth) { renderTime(); renderSide(); return; }
   const ms = new Date(cur.getFullYear(), cur.getMonth(), 1);
-  document.getElementById('title').textContent = `${ms.getFullYear()}년 ${ms.getMonth()+1}월`;
+  setTitle(`${ms.getFullYear()}년 ${ms.getMonth()+1}월`, yymm(ms));
   const first = addDays(ms, -ms.getDay());
   const weeksN = Math.ceil((ms.getDay() + new Date(ms.getFullYear(),ms.getMonth()+1,0).getDate())/7);
   const box = document.getElementById('weeks');
@@ -389,10 +401,11 @@ function renderTime(){
   const start = view === 'week' ? addDays(cur, -cur.getDay()) : cur;
   const days = Array.from({length:n}, (_,i) => addDays(start, i));
   const last = days[n-1];
-  document.getElementById('title').textContent = view === 'day'
+  setTitle(view === 'day'
     ? `${cur.getFullYear()}년 ${cur.getMonth()+1}월 ${cur.getDate()}일 (${DOW[cur.getDay()]})`
     : start.getMonth() === last.getMonth() ? `${start.getFullYear()}년 ${start.getMonth()+1}월`
-    : `${start.getFullYear()}년 ${start.getMonth()+1}월 → ${last.getMonth()+1}월`;
+    : `${start.getFullYear()}년 ${start.getMonth()+1}월 → ${last.getMonth()+1}월`,
+    view === 'day' ? `${pad(cur.getMonth()+1)}.${pad(cur.getDate())}` : yymm(start));
 
   const tv = document.getElementById('tview');
   tv.style.setProperty('--n', n); tv.style.setProperty('--h', HOUR_PX+'px');
