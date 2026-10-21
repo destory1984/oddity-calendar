@@ -112,6 +112,11 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
 #gBtn.g-on:hover .dot{background:#f28b82;box-shadow:0 0 0 3px #f28b8233}
 #gBtn.g-on:hover .t1{display:none}
 #gBtn.g-on:hover .t2{display:inline}
+#bunnyBtn{display:grid;place-items:center;position:relative}
+/* icon = first frame of the hop sprite */
+#bunnyBtn::before{content:"";width:26px;height:26px;background:url(img/hop.png) 0 50%/104px auto no-repeat}
+#bunnyBtn.off{opacity:.45}
+#bunnyBtn.off::after{content:"";position:absolute;width:24px;height:2px;background:#eef3ff;transform:rotate(-40deg);border-radius:1px}
 #soundBtn{display:grid;place-items:center}
 #soundBtn::before{content:"";width:22px;height:22px;background:url(img/ui/icon-sound-on.svg) center/contain no-repeat}
 #soundBtn.off::before{background-image:url(img/ui/icon-sound-off.svg)}
@@ -183,6 +188,7 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
     <div class="title" id="title"></div>
     <div class="spacer"></div>
     <span id="gStatus" style="color:var(--muted);font-size:12px"></span>
+    <button class="icon" id="bunnyBtn" title="토끼 끄기"></button>
     <button class="icon" id="soundBtn" title="소리 켜기/끄기"></button>
     <button id="gBtn"></button>
     <input id="search" placeholder="일정 검색">
@@ -893,8 +899,18 @@ const musicBox = (() => {
       if (k < 2) x += out[k]; else y += out[k];
     }
   };
+  // on/off button (remembered); off hides the bunny and stops its song
+  let enabled = store.get('cal.bunny', true);
+  const bBtn = document.getElementById('bunnyBtn');
+  const showBtn = () => { bBtn.classList.toggle('off', !enabled); bBtn.title = enabled ? '토끼 끄기' : '토끼 켜기'; el.style.display = enabled ? '' : 'none'; };
+  bBtn.onclick = () => {
+    enabled = !enabled; store.set('cal.bunny', enabled); showBtn();
+    if (!enabled){ musicBox.pause(); el.className = ''; } else { x = mx; y = my; stillSince = performance.now(); }
+  };
+  showBtn();
   (function tick(now){
     now ??= performance.now();
+    if (!enabled) return requestAnimationFrame(tick);
     // aim a little behind and below the cursor so it never covers what you click
     const tx = mx - 52 * dir, ty = my + 6;
     const dx = tx - x, dy = ty - y, dist = Math.hypot(dx, dy);
