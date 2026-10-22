@@ -63,6 +63,12 @@ aside{padding:8px 16px;overflow:auto}
 .mini .t{background:var(--today);color:#fff}
 .mini .sel{background:#004a77;color:#d3e3fd}
 h4{margin:22px 0 8px;font-size:15px}
+/* sidebar sections fold up from their heading (chevron on the right, like Google Calendar) */
+aside h4{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+aside h4::after{content:"";width:8px;height:8px;margin-right:6px;border:solid var(--muted);border-width:2px 2px 0 0;transform:translateY(2px) rotate(-45deg);transition:transform .15s}
+aside h4.folded::after{transform:translateY(-2px) rotate(135deg)}
+aside h4:hover::after{border-color:var(--text)}
+aside h4.folded + div{display:none}
 .cal-item{display:flex;align-items:center;gap:10px;padding:5px 0;cursor:pointer;user-select:none}
 .box{width:18px;height:18px;border-radius:3px;border:2px solid;display:grid;place-items:center;font-size:12px;color:#1f1f1f}
 main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;display:flex;flex-direction:column;overflow:hidden}
@@ -263,7 +269,7 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
     <h4 id="gHead" hidden>구글 캘린더</h4><div id="gCals"></div>
     <h4 id="otherHead">휴일</h4><div id="otherCals"></div>
     <h4 id="ddHead" hidden>다가오는 기념일</h4><div id="dday"></div>
-    <h4>보기</h4><div id="viewOpts"></div>
+    <h4 id="viewHead">보기</h4><div id="viewOpts"></div>
   </aside>
   <main>
     <div id="ddBar"></div>
@@ -549,6 +555,14 @@ function evEl(e, s, en, gridRow){
 const esc = s => s.replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
 
 // ---------- sidebar ----------
+// click a heading to fold its section; which ones are folded is remembered
+{
+  const folded = new Set(store.get('cal.folded', []));
+  for (const h of document.querySelectorAll('aside h4')){
+    h.classList.toggle('folded', folded.has(h.id));
+    h.onclick = () => { h.classList.toggle('folded') ? folded.add(h.id) : folded.delete(h.id); store.set('cal.folded', [...folded]); };
+  }
+}
 function renderSide(){
   document.getElementById('miniTitle').textContent = `${mini.getFullYear()}년 ${mini.getMonth()+1}월`;
   const m = document.getElementById('mini'); m.innerHTML = '일월화수목금토'.split('').map(x=>`<span style="cursor:default">${x}</span>`).join('');
