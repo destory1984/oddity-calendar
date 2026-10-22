@@ -34,6 +34,19 @@ header{grid-column:1/3;display:flex;white-space:nowrap;min-width:0;align-items:c
 .title{font-size:18px;margin-left:8px;min-width:0;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}   /* never squeezed; the search box and status text give up room first */
 .spacer{flex:1}
 #title .ts{display:none}
+/* upcoming anniversaries (sidebar list; on a phone the nearest one sits under the header) */
+#dday .dd{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:3px 0}
+#dday .dd b{color:#f28b82;font-weight:600;flex:none}
+#ddBar{display:none}
+/* anniversary days in the month view: hearts and petals drift up inside the cell */
+.anniv{grid-row:1/span 10;align-self:start;position:relative;overflow:hidden;pointer-events:none}
+.anniv i{position:absolute;bottom:-14px;font-style:normal;font-size:12px;opacity:0;animation:petal 6s linear infinite}
+@keyframes petal{0%{transform:translate(0,0) rotate(0);opacity:0}15%{opacity:.9}100%{transform:translate(var(--dx),-140px) rotate(var(--rot));opacity:0}}
+/* pull down to refresh (phones) */
+#pull{position:fixed;left:50%;top:56px;transform:translateX(-50%);background:#2d2e31;color:var(--text);border-radius:16px;padding:5px 12px;font-size:12px;z-index:50;opacity:0;transition:opacity .15s;pointer-events:none}
+#pull.on{opacity:1}
+/* seasonal hat on the cat (drawn from tiny pixel maps, scaled 2x like the cat) */
+#bunny .hat{position:absolute;display:none;image-rendering:pixelated}
 @media (max-width:1000px){#title .tl{display:none} #title .ts{display:inline} #title{flex-shrink:0}}   /* short title (26.10, 10.22) once the header gets tight */
 #search{background:var(--chip);border:1px solid var(--line);color:var(--text);border-radius:20px;padding:8px 14px;width:220px;min-width:90px;flex-shrink:10}   /* the search box gives up room before the title does */
 aside{padding:8px 16px;overflow:auto}
@@ -115,7 +128,7 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
 /* Neko (the classic desktop cat): 24 original frames + 16 in-between run frames, 32px each, drawn at 2x with crisp pixels */
 #bunny .neko{position:absolute;left:3px;bottom:0;width:64px;height:64px;background:url(img/neko/neko.png) 0 0/2560px 64px no-repeat;image-rendering:pixelated;display:none}
 #bunny.nk>*{display:none!important}
-#bunny.nk>.neko{display:block!important}
+#bunny.nk>.neko,#bunny.nk>.hat.on{display:block!important}
 #bunny.zz .run,#bunny.luv .run,#bunny.cry .run{display:none}
 #bunny.zz .sleep,#bunny.luv .love,#bunny.cry img.cry{display:block}
 @media (prefers-reduced-motion:reduce){#bunny{display:none}}
@@ -200,6 +213,7 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
   /* header on one line: short title, small controls */
   header{gap:4px;padding:8px 6px}
   .logo{width:auto}
+  #ddBar:not(:empty){display:block;text-align:center;font-size:12px;color:#f28b82;padding:0 0 4px}
   .logo b{font-size:13px;padding:1px 4px}
   .title{font-size:15px;margin:0 2px}
   #title .tl{display:none}
@@ -245,16 +259,20 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
     <div class="mini" id="mini"></div>
     <h4 id="gHead" hidden>구글 캘린더</h4><div id="gCals"></div>
     <h4 id="otherHead">휴일</h4><div id="otherCals"></div>
+    <h4 id="ddHead" hidden>다가오는 기념일</h4><div id="dday"></div>
     <h4>보기</h4><div id="viewOpts"></div>
   </aside>
   <main>
+    <div id="ddBar"></div>
     <div class="dow"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
     <div class="weeks" id="weeks"></div>
     <div class="tview" id="tview"></div>
   </main>
 </div>
 
-<div id="bunny" aria-hidden="true"><div class="run"></div><img class="sleep" src="img/sleep.png" alt=""><img class="cry" src="img/cry.png" alt=""><div class="neko"></div><div class="love"><img src="img/banner.png" alt=""><b>결혼 26주년 축하</b></div><span class="note">♥</span><span class="note">♥</span><span class="note">♥</span><span class="note">♥</span></div>
+<div id="bunny" aria-hidden="true"><div class="run"></div><img class="sleep" src="img/sleep.png" alt=""><img class="cry" src="img/cry.png" alt=""><div class="neko"></div><canvas class="hat"></canvas><div class="love"><img src="img/banner.png" alt=""><b>결혼 26주년 축하</b></div><span class="note">♥</span><span class="note">♥</span><span class="note">♥</span><span class="note">♥</span></div>
+
+<div id="pull"></div>
 
 <div id="songBox"><div id="songPlayer"></div></div>
 
@@ -351,6 +369,7 @@ function render(){
   box.style.gridTemplateRows = `repeat(${weeksN},minmax(0,1fr))`;
   box.innerHTML = '';
   const evs = allEvents();
+  const annivDays = new Set(evs.filter(e => ANNIV.test(e.title)).map(e => e.start));
   // as many event lanes as fit under the day number, keeping one line for "N개 더보기"
   const MAX_LANES = Math.max(1, Math.floor(box.clientHeight / weeksN / LANE_PX) - 2);
 
@@ -362,6 +381,7 @@ function render(){
       const bg = document.createElement('div'); bg.className='bgcell'; bg.style.gridColumn=i+1;
       bg.onclick = () => openEditor({start:ymd(d), end:ymd(d)});
       row.appendChild(bg);
+      if (annivDays.has(ymd(d))) row.appendChild(petals(i, box.clientHeight / weeksN));
       const n = document.createElement('div');
       n.className = 'dnum' + (d.getMonth()!==cur.getMonth()?' other':'') + (+d===+today?' today':'');
       n.style.gridColumn = i+1;
@@ -400,6 +420,22 @@ function render(){
     box.appendChild(row);
   }
   renderSide();
+}
+// anniversaries: events whose title says birthday / anniversary / wedding
+const ANNIV = /생일|기념일|주년|결혼/;
+function petals(col, h){
+  const box = document.createElement('div'); box.className = 'anniv'; box.style.gridColumn = col + 1; box.style.height = h + 'px';
+  for (let k = 0; k < 7; k++){
+    const p = document.createElement('i');
+    p.textContent = k % 2 ? '🌸' : '♥';
+    if (!(k % 2)) p.style.color = ['#f28b82', '#ff8fb1', '#f6aea9'][k % 3];
+    p.style.left = (8 + Math.random() * 80) + '%';
+    p.style.animationDelay = (k * 0.85) + 's';
+    p.style.setProperty('--dx', (Math.random() * 30 - 15) + 'px');
+    p.style.setProperty('--rot', (Math.random() * 120 - 60) + 'deg');
+    box.appendChild(p);
+  }
+  return box;
 }
 
 // ---------- week / day view ----------
@@ -596,6 +632,7 @@ async function gConnect(){
     CALS.splice(0, CALS.length, ...CALS.filter(c => c.group !== 'google'), ...gc);
     gButton(true);
     await gSync(true);
+    loadAnniv().catch(() => {});
   } catch (err) { gErr(err); }
   finally { gConnecting = false; }
 }
@@ -637,6 +674,33 @@ function gResume(){
   if (saved && saved.exp > Date.now()){ gToken = saved.t; gConnect(); return; }
   setStatus('클릭하면 구글 다시 연결');
   addEventListener('pointerdown', gResumeClick, {once:true, capture:true});
+}
+
+// upcoming anniversaries for the next year, from every Google calendar (only titles and dates are kept, in memory)
+let upcoming = [];
+async function loadAnniv(){
+  if (!gToken) return;
+  const to = addDays(today, 366);
+  const q = `?singleEvents=true&orderBy=startTime&maxResults=2500&fields=items(summary,start,status)&timeMin=${encodeURIComponent(today.toISOString())}&timeMax=${encodeURIComponent(to.toISOString())}`;
+  const lists = await Promise.all(CALS.filter(c => c.group === 'google' && !hidden.has(c.id)).map(c => gFetch(gPath(c.id) + q).then(r => r.items || [])));
+  const seen = new Set();
+  upcoming = lists.flat().filter(it => it.status !== 'cancelled' && ANNIV.test(it.summary || ''))
+    .map(it => ({title: it.summary, date: it.start.date || ymd(new Date(it.start.dateTime))}))
+    .filter(a => !seen.has(a.title + a.date) && seen.add(a.title + a.date))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  renderDday();
+}
+function renderDday(){
+  const dd = a => { const n = Math.round((parse(a.date) - today) / 864e5); return n ? 'D-' + n : 'D-day'; };
+  const box = document.getElementById('dday'); box.innerHTML = '';
+  for (const a of upcoming.slice(0, 5)){
+    const row = document.createElement('div'); row.className = 'dd';
+    row.append(Object.assign(document.createElement('span'), {textContent: a.title}), Object.assign(document.createElement('b'), {textContent: dd(a)}));
+    box.appendChild(row);
+  }
+  document.getElementById('ddHead').hidden = !upcoming.length;
+  const near = upcoming.find(a => (parse(a.date) - today) / 864e5 <= 30);
+  document.getElementById('ddBar').textContent = near ? `${near.title} ${dd(near)}` : '';
 }
 
 // fetch the shown month ±1 month from every Google calendar
@@ -726,9 +790,32 @@ function showDay(d){
 
 // full-screen editor laid out like Google Calendar's event page
 const REPEAT = [['', '반복 안함'], ['RRULE:FREQ=DAILY', '매일'], ['WEEKLY', '매주'], ['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR', '주중 매일(월-금)'],
-  ['RRULE:FREQ=MONTHLY', '매월'], ['RRULE:FREQ=YEARLY', '매년']];
+  ['RRULE:FREQ=MONTHLY', '매월'], ['RRULE:FREQ=YEARLY', '매년'], ['LUNAR', '매년 (음력)']];
 const UNITS = [[1, '분'], [60, '시간'], [1440, '일'], [10080, '주']];
 const DOW_RR = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+// lunar yearly repeat: Google has no lunar rule, so list the solar dates of the same lunar day for the next 30 years (RDATE)
+const DANGI_Y = (() => { try { return new Intl.DateTimeFormat('ko-KR-u-ca-dangi', {year:'numeric', month:'numeric', day:'numeric'}); } catch { return null; } })();
+const lunarParts = d => { const p = Object.fromEntries(DANGI_Y.formatToParts(d).map(x => [x.type, x.value])); return {y:+(p.relatedYear || p.year), m:p.month, d:+p.day}; };
+function solarOfLunar(ly, lm, ld){
+  // lunar year ly runs from late Jan/Feb of solar year ly to Jan/Feb of ly+1
+  for (let want = ld; want >= ld - 1; want--){   // a lunar 30th that doesn't exist that year falls back to the 29th
+    for (let d = new Date(ly, 0, 15); d < new Date(ly + 1, 2, 1); d = addDays(d, 1)){
+      const p = lunarParts(d);
+      if (p.y === ly && p.m === lm && p.d === want) return d;
+    }
+  }
+  return null;
+}
+function lunarRule(start, time){
+  if (!DANGI_Y) return null;
+  const s = lunarParts(parse(start));
+  if (!/^\d+$/.test(s.m)) return null;   // leap month
+  const dates = [];
+  for (let y = s.y + 1; y <= s.y + 30; y++){ const d = solarOfLunar(y, s.m, s.d); if (d) dates.push(d); }
+  const stamp = d => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+  return time ? `RDATE;TZID=${tz}:` + dates.map(d => stamp(d) + 'T' + time.replace(':', '') + '00').join(',')
+              : 'RDATE;VALUE=DATE:' + dates.map(stamp).join(',');
+}
 async function openEditor(e){
   const isNew = !e.gid;
   const own = CALS.filter(c => !c.readonly);
@@ -844,7 +931,8 @@ async function openEditor(e){
     }
     if (!$('eRepeat').disabled){
       const o = $('eRepeat').selectedOptions[0];
-      const rule = o.dataset.weekly ? `RRULE:FREQ=WEEKLY;BYDAY=${DOW_RR[parse(start).getDay()]}` : o.value;
+      const rule = o.dataset.weekly ? `RRULE:FREQ=WEEKLY;BYDAY=${DOW_RR[parse(start).getDay()]}` : o.value === 'LUNAR' ? lunarRule(start, all ? null : $('eStime').value || '09:00') : o.value;
+      if (rule === null) return alert('음력 날짜를 계산할 수 없는 날입니다 (윤달이거나 브라우저가 음력을 지원하지 않음).');
       if (rule || raw.recurrence) body.recurrence = rule ? [rule] : [];
     }
     $('eSave').disabled = true;
@@ -887,16 +975,33 @@ document.getElementById('createBtn').onclick = () => openEditor({start:ymd(today
 document.getElementById('search').oninput = e => { query = e.target.value.trim().toLowerCase(); render(); };
 document.querySelector('main').addEventListener('wheel', e => { if (view === 'month' && Math.abs(e.deltaY) > 40 && !bg.classList.contains('on')) go(e.deltaY>0?1:-1); }, {passive:true});
 // phone/tablet: swipe left = next, swipe right = previous (month, week or day); a mostly-sideways flick of 60px+
+// pull down 80px+ from the top (nothing scrolled) = reload from Google
 let swipe = null;
+const pullEl = document.getElementById('pull');
+const atTop = el => { for (; el && el !== document.body; el = el.parentElement) if (el.scrollTop > 0) return false; return true; };
 document.querySelector('main').addEventListener('touchstart', e => {
-  swipe = e.touches.length === 1 ? {x:e.touches[0].clientX, y:e.touches[0].clientY, t:Date.now()} : null;
+  swipe = e.touches.length === 1 ? {x:e.touches[0].clientX, y:e.touches[0].clientY, t:Date.now(), top:atTop(e.target)} : null;
+}, {passive:true});
+document.querySelector('main').addEventListener('touchmove', e => {
+  if (!swipe?.top) return;
+  const dx = e.touches[0].clientX - swipe.x, dy = e.touches[0].clientY - swipe.y;
+  const pulling = dy > 30 && dy > 1.5 * Math.abs(dx);
+  pullEl.textContent = dy > 80 ? '놓으면 새로고침' : '↓ 당겨서 새로고침';
+  pullEl.classList.toggle('on', pulling);
 }, {passive:true});
 document.querySelector('main').addEventListener('touchend', e => {
+  pullEl.classList.remove('on');
   if (!swipe || bg.classList.contains('on')) return;
   const dx = e.changedTouches[0].clientX - swipe.x, dy = e.changedTouches[0].clientY - swipe.y;
   if (Math.abs(dx) > 60 && Math.abs(dx) > 1.5 * Math.abs(dy) && Date.now() - swipe.t < 700) go(dx < 0 ? 1 : -1);
+  else if (swipe.top && dy > 80 && dy > 1.5 * Math.abs(dx)) refresh();
   swipe = null;
 }, {passive:true});
+function refresh(){
+  if (!gToken) return location.reload();
+  setStatus('새로고침…');
+  gSync(true).catch(gErr); loadAnniv().catch(() => {});
+}
 render();
 
 // ---------- music box ----------
@@ -1001,7 +1106,8 @@ const musicBox = (() => {
   const love = el.querySelector('.love');
   let mx = innerWidth / 2, my = innerHeight / 2, x = mx, y = my, dir = 1, phase = 0, stillSince = performance.now();
   // mouse: follows the pointer; phone/tablet (no hover): follows where you tap or drag a finger
-  const aim = e => { mx = e.clientX; my = e.clientY; };
+  let lastAim = performance.now();
+  const aim = e => { mx = e.clientX; my = e.clientY; lastAim = performance.now(); };
   addEventListener('pointermove', aim, {passive:true});
   addEventListener('pointerdown', aim, {passive:true});
   // events are obstacles: refresh their boxes a few times a second
@@ -1092,6 +1198,54 @@ const musicBox = (() => {
   const nekoEl = el.querySelector('.neko');
   let nekoHead = 'down', catRest = 0;
   let lastRunFrame = '';
+  // seasonal hat: tiny pixel maps, outlined in black, sat on the top of the cat's head in every frame
+  const HATS = {
+    santa: ['.......WW.', '......RRW.', '....RRRR..', '...RRRRR..', '..RRRRRRR.', 'WWWWWWWWWW'],
+    witch: ['....KK....', '...KKK....', '...KKKK...', '..KKKKKK..', '..KYYYYK..', 'KKKKKKKKKK'],
+    beanie: ['....WW....', '..BBBBBB..', '.BBBBBBBB.', '.BBBBBBBB.', '.WWWWWWWW.'],
+    flower: ['.P.P.', 'PPYPP', '.PPP.', '..G..'],
+    straw: ['...YYYY...', '..YYYYYY..', '..RRRRRR..', 'YYYYYYYYYY'],
+    party: ['..Y..', '..P..', '.PYP.', '.PPP.', 'PYPYP'],
+  };
+  const HAT_INK = {W:'#fff', R:'#d93025', K:'#3c2a4d', Y:'#f6bf26', B:'#4285f4', P:'#ff8fb1', G:'#34a853'};
+  function pickHat(){
+    const m = today.getMonth() + 1, d = today.getDate();
+    if (gEvents.some(e => e.start === ymd(today) && ANNIV.test(e.title))) return 'party';
+    if (m === 12 && d <= 25) return 'santa';
+    if (m === 10 && d >= 15) return 'witch';
+    if (m === 12 || m <= 2) return 'beanie';
+    if ((m === 3 && d >= 10) || m === 4) return 'flower';
+    if (m === 7 || m === 8) return 'straw';
+    return '';
+  }
+  const hatEl = el.querySelector('.hat');
+  let hatName = null;
+  function drawHat(name){
+    hatName = name; hatEl.classList.toggle('on', !!name);
+    if (!name) return;
+    const rows = HATS[name], w = rows[0].length + 2, h = rows.length + 2;   // +1px outline on every side
+    hatEl.width = w; hatEl.height = h; hatEl.style.width = w * 2 + 'px'; hatEl.style.height = h * 2 + 'px';
+    const c = hatEl.getContext('2d'), ink = (x, y) => rows[y - 1]?.[x - 1] && rows[y - 1][x - 1] !== '.' ? rows[y - 1][x - 1] : '';
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++){
+      const k = ink(x, y);
+      if (k){ c.fillStyle = HAT_INK[k]; c.fillRect(x, y, 1, 1); }
+      else if ([[1,0],[-1,0],[0,1],[0,-1]].some(([a, b]) => ink(x + a, y + b))){ c.fillStyle = '#000'; c.fillRect(x, y, 1, 1); }
+    }
+  }
+  // top of the head (between the ears) in each 32x32 frame of the cat sheet: [x, y], read off the sheet by eye
+  // (the tail or back is often higher than the head, so the topmost pixel won't do)
+  const heads = [[15,5],[16,2],[15,2],[15,10],[16,2],[6,8],[6,5],[26,8],[26,5],[10,2],[12,5],[20,3],[19,5],[6,10],[7,8],
+    [25,10],[21,6],[14,14],[14,14],[16,5],[15,3],[11,3],[9,5],[9,5],[16,1],[16,1],[20,1],[20,4],[25,5],[27,5],
+    [24,13],[23,13],[16,11],[15,12],[6,14],[6,12],[6,9],[6,10],[10,3],[11,4]];
+  function placeHat(frame){
+    const want = pickHat();
+    if (want !== hatName) drawHat(want);
+    if (!hatName) return;
+    const [hx, hy] = heads[frame];
+    // the cat is drawn 64x64 at left:3px, bottom:0 inside the 70x73 box (top 9px); the brim covers the top 2px of the head
+    hatEl.style.left = (3 + hx * 2 - hatEl.width) + 'px';
+    hatEl.style.top = (9 + (hy + 2) * 2 - hatEl.height * 2) + 'px';
+  }
   function drawNeko(now, vx, vy, going){
     if (musicBox && el.classList.contains('luv')) musicBox.pause();
     el.classList.remove('luv', 'zz', 'cry');
@@ -1115,6 +1269,7 @@ const musicBox = (() => {
       f = rest < 1500 ? 'awake' : rest < 3500 ? 'wash1' : rest < 5000 ? 'yawn' + two : 'sleep' + (((now / 700) | 0) % 2 + 1);
     }
     nekoEl.style.backgroundPositionX = -NK[f] * 64 + 'px';
+    placeHat(NK[f]);
     el.style.transform = `translate(${x - W/2}px, ${y - H}px)`;   // the cat has its own left/right frames: never mirrored
   }
   let hopRow = 2;   // heading row in the quarter-view sheet; starts side-on
@@ -1126,9 +1281,13 @@ const musicBox = (() => {
     if (!enabled) return requestAnimationFrame(tick);
     // goal: beside the cursor on the side the animal is already on (so it never runs round it),
     // a little low so it doesn't cover what you click; moved to free space if an event is there
-    if (Math.abs(x - mx) > 50) side = x < mx ? -1 : 1;
-    const gk = `${side},${mx | 0},${my | 0},${walls.length}`;
-    if (gk !== goalKey){ goal = freeSpot(mx + side * 40, my + 6); goalKey = gk; }
+    // left alone for 20s in the month view: it goes over to today's date and plays there
+    let ax = mx, ay = my;
+    const td = now - lastAim > 20000 && view === 'month' && document.querySelector('.dnum.today');
+    if (td){ const r = td.getBoundingClientRect(); ax = r.left + r.width / 2; ay = r.bottom + 34; }
+    if (Math.abs(x - ax) > 50) side = x < ax ? -1 : 1;
+    const gk = `${side},${ax | 0},${ay | 0},${walls.length}`;
+    if (gk !== goalKey){ goal = freeSpot(ax + side * (td ? 0 : 40), ay + (td ? 0 : 6)); goalKey = gk; }
     const [tx, ty] = goal;
     const dx = tx - x, dy = ty - y, dist = Math.hypot(dx, dy);
     const ox = x, oy = y;
