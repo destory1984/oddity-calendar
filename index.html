@@ -29,8 +29,9 @@ header{grid-column:1/3;display:flex;white-space:nowrap;min-width:0;align-items:c
 .logo b{background:#1a73e8;color:#fff;border-radius:6px;padding:2px 6px;font-size:16px}
 .pill{border:1px solid var(--line);border-radius:20px;padding:8px 22px}
 .pill:hover,.icon:hover{background:var(--hover)}
+#todayBtn{padding:6px 10px}
 .icon{width:36px;height:36px;border-radius:50%;font-size:18px}
-.title{font-size:22px;margin-left:8px;min-width:0;overflow:hidden;text-overflow:ellipsis;flex-shrink:.01}   /* long day-view titles shrink instead of pushing buttons off-screen */
+.title{font-size:18px;margin-left:8px;min-width:0;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}   /* never squeezed; the search box and status text give up room first */
 .spacer{flex:1}
 #title .ts{display:none}
 @media (max-width:1000px){#title .tl{display:none} #title .ts{display:inline} #title{flex-shrink:0}}   /* short title (26.10, 10.22) once the header gets tight */
@@ -119,7 +120,7 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
 #bunny.zz .sleep,#bunny.luv .love,#bunny.cry img.cry{display:block}
 @media (prefers-reduced-motion:reduce){#bunny{display:none}}
 /* sound icons from the oddity project (MIT); same toggle style: class "off" + dimmer */
-#gBtn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 16px;border-radius:18px;font-size:14px;transition:background .15s,border-color .15s,color .15s}
+#gBtn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:18px;font-size:14px;transition:background .15s,border-color .15s,color .15s}
 #gBtn.g-off{background:#fff;color:#1f1f1f;font-weight:600;box-shadow:0 1px 3px #0006}
 #gBtn.g-off:hover{background:#f1f3f4;box-shadow:0 2px 6px #0008}
 #gBtn.g-on{border:1px solid var(--line);color:var(--text)}
@@ -137,8 +138,8 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
 #bunnyBtn.off::after{content:"";position:absolute;width:24px;height:2px;background:#eef3ff;transform:rotate(-40deg);border-radius:1px}
 #soundBtn{display:grid;place-items:center}
 /* prev/next arrows from the oddity project (MIT) */
-.nav{display:inline-grid;place-items:center;vertical-align:middle}
-.nav::before{content:"";width:20px;height:20px;background:center/contain no-repeat}
+.nav{display:inline-grid;place-items:center;vertical-align:middle;width:30px;height:30px}
+.nav::before{content:"";width:16px;height:16px;background:center/contain no-repeat}
 .nav.prev::before{background-image:url(img/ui/icon-prev.svg)}
 .nav.next::before{background-image:url(img/ui/icon-next.svg)}
 #soundBtn::before{content:"";width:22px;height:22px;background:url(img/ui/icon-sound-on.svg) center/contain no-repeat}
@@ -198,15 +199,18 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
   aside,.logo span,#search,#gStatus{display:none}
   /* header on one line: short title, small controls */
   header{gap:4px;padding:8px 6px}
+  .logo{width:auto}
   .logo b{font-size:13px;padding:1px 4px}
-  .title{font-size:17px;margin:0 2px}
+  .title{font-size:15px;margin:0 2px}
   #title .tl{display:none}
   #title .ts{display:inline}
   .pill{padding:4px 9px;font-size:13px}
   .icon{width:28px;height:28px;font-size:15px}
+  .nav{width:24px;height:24px} .nav::before{width:13px;height:13px}
+  #todayBtn{padding:4px 6px}
   #bunnyBtn::before{transform:scale(.8)}
   #soundBtn::before{width:18px;height:18px}
-  #gBtn{height:28px;padding:0 8px}
+  #gBtn{height:24px;padding:0 6px}
   #gBtn svg{width:15px;height:15px}
   #gBtn.g-off span,#gBtn.g-on .t1,#gBtn.g-on .t2{display:none}   /* just the G logo / the green dot */
   #gBtn.g-on:hover .t2{display:none}
