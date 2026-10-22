@@ -575,7 +575,7 @@ async function gFetch(path, opt = {}, retry = true){
 
 let gConnecting = false;
 async function gConnect(){
-  if (gToken && CALS.some(c => c.group === 'google')) return gSync(true).catch(gErr);
+  if (gToken && CALS.some(c => c.group === 'google')) return gSync(true).then(() => gButton(true)).catch(gErr);
   if (gConnecting) return;
   if (!GOOGLE_CLIENT_ID && !store.get('cal.gclient', '')){
     const id = prompt('구글 OAuth 클라이언트 ID를 붙여 넣으세요 (….apps.googleusercontent.com)');
@@ -607,7 +607,8 @@ function gButton(linked){
 }
 gButton(false);
 
-const gErr = err => setStatus('구글 오류: ' + err.message);
+// any Google failure: show the button as not linked, so a click reconnects instead of offering to disconnect
+const gErr = err => { gButton(false); setStatus('구글 오류: ' + err.message); };
 
 // reconnect after a reload: reuse a saved token that is still valid; if it ran out,
 // fetch a new one on the first click (browsers only allow the sign-in popup from a click)
@@ -627,8 +628,7 @@ async function gDisconnect(){
 }
 
 function gResume(){
-  if (!store.get('cal.gon', false)) return;
-  gButton(true);
+  if (!store.get('cal.gon', false)) return;   // the button only says "연결됨" once Google actually answers (gConnect)
   const saved = store.get('cal.gtoken', null);
   if (saved && saved.exp > Date.now()){ gToken = saved.t; gConnect(); return; }
   setStatus('클릭하면 구글 다시 연결');
@@ -876,7 +876,7 @@ document.getElementById('mPrev').onclick = () => { mini = new Date(mini.getFullY
 document.getElementById('mNext').onclick = () => { mini = new Date(mini.getFullYear(), mini.getMonth()+1, 1); renderSide(); };
 let resizeT; addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(render, 150); });
 // one button: "구글 연결" while disconnected, "연결 끊기" once linked
-document.getElementById('gBtn').onclick = () => store.get('cal.gon', false) ? gDisconnect() : gConnect();
+document.getElementById('gBtn').onclick = () => document.getElementById('gBtn').className === 'g-on' ? gDisconnect() : gConnect();
 gResume();
 document.getElementById('createBtn').onclick = () => openEditor({start:ymd(today), end:ymd(today)});
 document.getElementById('search').oninput = e => { query = e.target.value.trim().toLowerCase(); render(); };
