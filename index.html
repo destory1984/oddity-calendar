@@ -881,6 +881,17 @@ gResume();
 document.getElementById('createBtn').onclick = () => openEditor({start:ymd(today), end:ymd(today)});
 document.getElementById('search').oninput = e => { query = e.target.value.trim().toLowerCase(); render(); };
 document.querySelector('main').addEventListener('wheel', e => { if (view === 'month' && Math.abs(e.deltaY) > 40 && !bg.classList.contains('on')) go(e.deltaY>0?1:-1); }, {passive:true});
+// phone/tablet: swipe left = next, swipe right = previous (month, week or day); a mostly-sideways flick of 60px+
+let swipe = null;
+document.querySelector('main').addEventListener('touchstart', e => {
+  swipe = e.touches.length === 1 ? {x:e.touches[0].clientX, y:e.touches[0].clientY, t:Date.now()} : null;
+}, {passive:true});
+document.querySelector('main').addEventListener('touchend', e => {
+  if (!swipe || bg.classList.contains('on')) return;
+  const dx = e.changedTouches[0].clientX - swipe.x, dy = e.changedTouches[0].clientY - swipe.y;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > 1.5 * Math.abs(dy) && Date.now() - swipe.t < 700) go(dx < 0 ? 1 : -1);
+  swipe = null;
+}, {passive:true});
 render();
 
 // ---------- music box ----------
