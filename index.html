@@ -30,10 +30,11 @@ header{grid-column:1/3;display:flex;white-space:nowrap;min-width:0;align-items:c
 .pill{border:1px solid var(--line);border-radius:20px;padding:8px 22px}
 .pill:hover,.icon:hover{background:var(--hover)}
 .icon{width:36px;height:36px;border-radius:50%;font-size:18px}
-.title{font-size:22px;margin-left:8px}
+.title{font-size:22px;margin-left:8px;min-width:0;overflow:hidden;text-overflow:ellipsis;flex-shrink:.01}   /* long day-view titles shrink instead of pushing buttons off-screen */
 .spacer{flex:1}
 #title .ts{display:none}
-#search{background:var(--chip);border:1px solid var(--line);color:var(--text);border-radius:20px;padding:8px 14px;width:220px}
+@media (max-width:1000px){#title .tl{display:none} #title .ts{display:inline} #title{flex-shrink:0}}   /* short title (26.10, 10.22) once the header gets tight */
+#search{background:var(--chip);border:1px solid var(--line);color:var(--text);border-radius:20px;padding:8px 14px;width:220px;min-width:90px;flex-shrink:10}   /* the search box gives up room before the title does */
 aside{padding:8px 16px;overflow:auto}
 .create{background:#37393b;border-radius:18px;padding:8px 16px;font-size:14px;margin-bottom:16px}
 .create:hover{background:#45474a}
@@ -227,7 +228,7 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
     <button class="icon nav next" id="next" title="다음" aria-label="다음"></button>
     <div class="title" id="title"></div>
     <div class="spacer"></div>
-    <span id="gStatus" style="color:var(--muted);font-size:12px"></span>
+    <span id="gStatus" style="color:var(--muted);font-size:12px;min-width:0;overflow:hidden;flex-shrink:10"></span>
     <button class="icon" id="bunnyBtn" title="토끼 끄기"></button>
     <button class="icon" id="soundBtn" title="소리 켜기/끄기"></button>
     <button id="gBtn"></button>
@@ -406,7 +407,7 @@ function renderTime(){
   const days = Array.from({length:n}, (_,i) => addDays(start, i));
   const last = days[n-1];
   setTitle(view === 'day'
-    ? `${cur.getFullYear()}년 ${cur.getMonth()+1}월 ${cur.getDate()}일 (${DOW[cur.getDay()]})`
+    ? `${cur.getMonth()+1}월 ${cur.getDate()}일`   // no year or weekday (the column header shows it): keeps the title short
     : start.getMonth() === last.getMonth() ? `${start.getFullYear()}년 ${start.getMonth()+1}월`
     : `${start.getFullYear()}년 ${start.getMonth()+1}월 → ${last.getMonth()+1}월`,
     view === 'day' ? `${pad(cur.getMonth()+1)}.${pad(cur.getDate())}` : yymm(start));
