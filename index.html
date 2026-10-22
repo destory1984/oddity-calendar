@@ -81,8 +81,7 @@ main{background:var(--panel);border-radius:24px 24px 0 0;margin-right:12px;displ
 .btn.primary{background:var(--accent);color:#062e6f}
 .btn.danger{color:#f28b82;margin-right:auto}
 .list .ev{margin:4px 0}
-#view{background:var(--bg);color:var(--text);padding:8px 14px}
-#view option{background:#2d2e31;color:var(--text)}
+#view{background:var(--bg);color:var(--text);padding:8px 14px;cursor:pointer}
 .tview{flex:1;display:none;flex-direction:column;min-height:0}
 .tgrid{display:grid;grid-template-columns:56px repeat(var(--n),minmax(0,1fr))}
 .t-head{text-align:center;padding:8px 0 4px;font-size:11px;color:var(--muted)}
@@ -233,7 +232,7 @@ body.playing #soundBtn::before{animation:beat .9s ease-in-out infinite}
     <button class="icon" id="soundBtn" title="소리 켜기/끄기"></button>
     <button id="gBtn"></button>
     <input id="search" placeholder="일정 검색">
-    <select id="view" class="pill"><option value="month">월</option><option value="week">주</option><option value="day">일</option></select>
+    <button id="view" class="pill" title="월/주/일 바꾸기">월</button>
   </header>
   <aside>
     <button class="create" id="createBtn">＋ 만들기</button>
@@ -332,7 +331,7 @@ function setTitle(long, short){
 }
 function render(){
   document.getElementById('logoDay').textContent = today.getDate();
-  document.getElementById('view').value = view;
+  document.getElementById('view').textContent = {month:'월', week:'주', day:'일'}[view];
   const isMonth = view === 'month';
   document.querySelector('.dow').style.display = isMonth ? '' : 'none';
   document.getElementById('weeks').style.display = isMonth ? '' : 'none';
@@ -863,7 +862,8 @@ const go = n => {
   mini = new Date(cur.getFullYear(), cur.getMonth(), 1); render();
 };
 const setView = v => { view = v; store.set('cal.view', v); render(); };
-document.getElementById('view').onchange = e => setView(e.target.value);
+// one tap cycles month -> week -> day -> month
+document.getElementById('view').onclick = () => setView({month:'week', week:'day', day:'month'}[view]);
 document.addEventListener('keydown', e => {
   if (bg.classList.contains('on') || e.target.matches('input,select')) return;
   const v = {m:'month', w:'week', d:'day'}[e.key]; if (v) setView(v);
