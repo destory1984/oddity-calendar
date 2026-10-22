@@ -579,6 +579,10 @@ function renderSide(){
     it.onclick = () => { showLunar = !showLunar; store.set('cal.lunar', showLunar); render(); };
     vo.appendChild(it);
   }
+  const dd = document.createElement('div'); dd.className = 'cal-item';
+  dd.innerHTML = `<span class="box" style="border-color:#9aa0a6;background:${showDday ? '#9aa0a6' : 'transparent'};color:#1f1f1f">${showDday ? '✓' : ''}</span>다가오는 기념일`;
+  dd.onclick = () => { showDday = !showDday; store.set('cal.dday', showDday); renderDday(); renderSide(); };
+  vo.appendChild(dd);
 }
 
 // ---------- Google Calendar ----------
@@ -680,7 +684,7 @@ function gResume(){
 }
 
 // upcoming anniversaries for the next year, from every Google calendar (only titles and dates are kept, in memory)
-let upcoming = [];
+let upcoming = [], showDday = store.get('cal.dday', true);   // the list can be switched off under "보기"
 async function loadAnniv(){
   if (!gToken) return;
   const to = addDays(today, 366);
@@ -702,10 +706,11 @@ function renderDday(){
     row.append(Object.assign(document.createElement('span'), {textContent: a.title}), Object.assign(document.createElement('b'), {textContent: dd(a)}));
     box.appendChild(row);
   }
-  document.getElementById('ddHead').hidden = !upcoming.length;
+  if (!showDday) box.innerHTML = '';
+  document.getElementById('ddHead').hidden = !showDday || !upcoming.length;
   const near = upcoming.find(a => (parse(a.date) - today) / 864e5 <= 30);
   const bar = document.getElementById('ddBar');
-  bar.textContent = near ? `${near.title} ${dd(near)}` : '';
+  bar.textContent = near && showDday ? `${near.title} ${dd(near)}` : '';
   bar.onclick = () => near && goDate(near.date);
 }
 // show the month of that day (and the day itself in week/day view)
