@@ -34,6 +34,7 @@ header{grid-column:1/3;display:flex;white-space:nowrap;min-width:0;align-items:c
 .title{font-size:18px;margin-left:8px;min-width:0;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}   /* never squeezed; the search box and status text give up room first */
 .spacer{flex:1}
 #title .ts{display:none}
+.lunar-hint{font-size:12px;color:#f28b82}
 /* upcoming anniversaries (sidebar list; on a phone the nearest one sits under the header) */
 #dday .dd{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:3px 0}
 #dday .dd b{color:#f28b82;font-weight:600;flex:none}
@@ -839,6 +840,7 @@ async function openEditor(e){
     <div class="ed-line">
       <label class="chk"><input type="checkbox" id="eAll"> 종일</label>
       <select id="eRepeat"></select>
+      <span id="eLunarHint" class="lunar-hint"></span>
     </div>
   </div>
   <div class="ed-body">
@@ -866,6 +868,14 @@ async function openEditor(e){
     if (v === 'WEEKLY') o.dataset.weekly = '1';
     $('eRepeat').add(o);
   }
+  // "매년 (음력)": the date box holds the lunar month/day; show which solar day that is this year
+  const lunarOn = () => !$('eRepeat').disabled && $('eRepeat').value === 'LUNAR';
+  const showLunarHint = () => {
+    const [y, m, d] = ($('eStart').value || '').split('-').map(Number);
+    const sd = lunarOn() && y ? solarOfLunar(y, String(m), d) : null;
+    $('eLunarHint').textContent = !lunarOn() ? '' : sd ? `날짜를 음력으로 읽습니다: 음력 ${m}월 ${d}일 → 양력 ${ymd(sd)}` : '없는 음력 날짜입니다';
+  };
+  $('eRepeat').addEventListener('change', showLunarHint); $('eStart').addEventListener('change', showLunarHint);
   if (raw.recurringEventId){   // an occurrence of a repeating event: edits apply to this one only
     $('eRepeat').innerHTML = ''; $('eRepeat').add(new Option('반복 일정 (이 일정만 수정)', '')); $('eRepeat').disabled = true;
   }
@@ -914,6 +924,13 @@ async function openEditor(e){
     let start = $('eStart').value, end = $('eEnd').value || start;
     if (!start) return;
     if (end < start) end = start;
+    if (lunarOn()){
+      // the picked date is a lunar date: move start (and end, by the same span) to its solar day in that lunar year
+      const [y, m, d] = start.split('-').map(Number), sd = solarOfLunar(y, String(m), d);
+      if (!sd) return alert('없는 음력 날짜입니다.');
+      const span = Math.round((parse(end) - parse(start)) / 864e5);
+      start = ymd(sd); end = ymd(addDays(sd, span));
+    }
     const all = $('eAll').checked;
     const body = {
       summary: $('eTitle').value.trim() || '(제목 없음)',
